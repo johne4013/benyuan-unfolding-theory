@@ -24,7 +24,7 @@ class EvolutionCandidateManager:
         """创建一个新的理论演化候选"""
 
         candidate = {
-            'id': f"cand-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
+            'id': f"cand-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}",
             'created_at': datetime.now().isoformat(),
             'type': candidate_type,  # PATTERN, ANOMALY, ENHANCEMENT
             'priority': self._get_priority(candidate_type),
