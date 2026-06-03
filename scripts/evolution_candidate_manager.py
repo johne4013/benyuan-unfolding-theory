@@ -261,6 +261,8 @@ if __name__ == '__main__':
         print("  approve <id>      批准一个候选")
         print("  reject <id>       拒绝一个候选")
         print("  defer <id>        延迟一个候选")
+        print("  integrate <id>    集成 APPROVED 候选到 runtime 理论文件")
+        print("  dry-run <id>      预览集成内容，不实际写入")
         print("  add-evidence <id> <task> <description>")
         print("                    为 PATTERN 类候选添加证据")
         print("\n" + "="*70)
@@ -298,6 +300,29 @@ if __name__ == '__main__':
             '延迟评审，标记为未来研究'
         )
         print(f"⏸ 已延迟：{candidate['title']}")
+
+    elif sys.argv[1] == 'integrate' and len(sys.argv) > 2:
+        from theory_integration_writer import TheoryIntegrationWriter
+        writer = TheoryIntegrationWriter()
+        result = writer.integrate_by_id(sys.argv[2], dry_run=False)
+        if result['errors']:
+            print(f"✗ 集成出错：")
+            for e in result['errors']:
+                print(f"  {e}")
+        else:
+            print(f"✓ 集成完成，写入：{', '.join(result['files_written'])}")
+            if result.get('candidate_status') == 'INTEGRATED':
+                print(f"  候选状态已更新为 INTEGRATED")
+
+    elif sys.argv[1] == 'dry-run' and len(sys.argv) > 2:
+        from theory_integration_writer import TheoryIntegrationWriter
+        writer = TheoryIntegrationWriter()
+        print(f"[预览] 候选 {sys.argv[2]} 集成计划：\n")
+        result = writer.integrate_by_id(sys.argv[2], dry_run=True)
+        if result['errors']:
+            print(f"✗ 预览错误：{result['errors']}")
+        else:
+            print(f"\n将写入文件：{', '.join(result['files_written'])}")
 
     elif sys.argv[1] == 'add-evidence' and len(sys.argv) > 3:
         task_id = sys.argv[2]
