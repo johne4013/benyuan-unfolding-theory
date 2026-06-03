@@ -161,6 +161,17 @@ class FeedbackClassifier:
         with open(feedback_file_path, 'r', encoding='utf-8') as f:
             feedback = json.load(f)
 
+        is_valid, error_msg = self._validate_feedback_structure(feedback)
+        if not is_valid:
+            return {
+                'feedback_file': str(feedback_file_path),
+                'classification': 'INVALID',
+                'priority': None,
+                'candidate_generated': False,
+                'candidate_file': None,
+                'validation_error': error_msg,
+            }
+
         classification = self.classify_feedback(feedback)
         candidate = self.generate_candidate(feedback, classification)
 

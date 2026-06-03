@@ -7,6 +7,7 @@
 
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Dict, Tuple
 from datetime import datetime
@@ -105,6 +106,7 @@ class FeedbackFormatConverter:
         # 补充基本字段
         if 'task_id' not in feedback_dict:
             feedback_dict['task_id'] = 'unknown'
+            print("警告：无法从内容中提取 task_id，使用 'unknown' 作为默认值", file=sys.stderr)
         if 'task_name' not in feedback_dict:
             feedback_dict['task_name'] = 'Unknown Task'
 
@@ -270,12 +272,17 @@ class FeedbackFormatConverter:
         files = list(input_path.glob(f"*{ext}"))
 
         results = []
+        failures = []
         for file in files:
             try:
                 output = self.auto_convert(str(file), output_format)
                 results.append(output)
             except Exception as e:
                 print(f"✗ 转换失败 {file}：{str(e)}")
+                failures.append(str(file))
+
+        if failures:
+            print(f"\n⚠ 批量转换完成，{len(failures)} 个文件失败，{len(results)} 个成功", file=sys.stderr)
 
         return results
 

@@ -5,6 +5,9 @@
 """
 
 import json
+import os
+import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
@@ -50,13 +53,22 @@ class EvolutionCandidateManager:
         return priorities.get(candidate_type, 'medium')
 
     def save_candidate(self, candidate: Dict) -> str:
-        """保存候选到文件"""
+        """保存候选到文件（原子写入：先写临时文件，再重命名，防止写入中途崩溃导致数据损坏）"""
 
         filename = f"{candidate['id']}-{candidate['type'].lower()}.json"
         filepath = self.candidates_dir / filename
 
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(candidate, f, indent=2, ensure_ascii=False)
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=self.candidates_dir, suffix='.tmp')
+        try:
+            with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
+                json.dump(candidate, f, indent=2, ensure_ascii=False)
+            os.replace(tmp_path, filepath)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
         return str(filepath)
 
@@ -66,6 +78,10 @@ class EvolutionCandidateManager:
         files = list(self.candidates_dir.glob(f"{candidate_id}-*.json"))
         if not files:
             raise FileNotFoundError(f"未找到候选：{candidate_id}")
+        if len(files) > 1:
+            raise RuntimeError(
+                f"候选 {candidate_id} 存在多个匹配文件，请手动清理重复项：{[f.name for f in files]}"
+            )
 
         try:
             with open(files[0], 'r', encoding='utf-8') as f:
@@ -81,13 +97,17 @@ class EvolutionCandidateManager:
 
         candidates = []
         for candidate_file in self.candidates_dir.glob("*.json"):
-            with open(candidate_file, 'r', encoding='utf-8') as f:
-                candidate = json.load(f)
+            try:
+                with open(candidate_file, 'r', encoding='utf-8') as f:
+                    candidate = json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"警告：跳过损坏的候选文件 {candidate_file.name}：{e}", file=sys.stderr)
+                continue
 
             # 过滤
-            if status and candidate['status'] != status:
+            if status and candidate.get('status') != status:
                 continue
-            if candidate_type and candidate['type'] != candidate_type:
+            if candidate_type and candidate.get('type') != candidate_type:
                 continue
 
             candidates.append(candidate)
@@ -95,8 +115,8 @@ class EvolutionCandidateManager:
         # 按优先级和创建时间排序
         priority_order = {'high': 0, 'medium': 1, 'low': 2}
         candidates.sort(key=lambda x: (
-            priority_order.get(x['priority'], 3),
-            x['created_at']
+            priority_order.get(x.get('priority'), 3),
+            x.get('created_at', '')
         ), reverse=True)
 
         return candidates
@@ -117,9 +137,7 @@ class EvolutionCandidateManager:
                 'note': decision_notes,
             })
 
-        # 重新保存
-        old_file = list(self.candidates_dir.glob(f"{candidate_id}-*.json"))[0]
-        old_file.unlink()
+        # 原子覆盖写入（save_candidate 使用临时文件 + os.replace，文件名由 id+type 决定不变）
         self.save_candidate(candidate)
 
         return candidate
@@ -136,9 +154,7 @@ class EvolutionCandidateManager:
             'timestamp': datetime.now().isoformat(),
         })
 
-        # 重新保存
-        old_file = list(self.candidates_dir.glob(f"{candidate_id}-*.json"))[0]
-        old_file.unlink()
+        # 原子覆盖写入
         self.save_candidate(candidate)
 
         return candidate
