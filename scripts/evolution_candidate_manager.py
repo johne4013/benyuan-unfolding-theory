@@ -5,6 +5,9 @@
 """
 
 import json
+import os
+import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
@@ -21,7 +24,7 @@ class EvolutionCandidateManager:
         """创建一个新的理论演化候选"""
 
         candidate = {
-            'id': f"cand-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
+            'id': f"cand-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}",
             'created_at': datetime.now().isoformat(),
             'type': candidate_type,  # PATTERN, ANOMALY, ENHANCEMENT
             'priority': self._get_priority(candidate_type),
@@ -50,13 +53,22 @@ class EvolutionCandidateManager:
         return priorities.get(candidate_type, 'medium')
 
     def save_candidate(self, candidate: Dict) -> str:
-        """保存候选到文件"""
+        """保存候选到文件（原子写入：先写临时文件，再重命名，防止写入中途崩溃导致数据损坏）"""
 
         filename = f"{candidate['id']}-{candidate['type'].lower()}.json"
         filepath = self.candidates_dir / filename
 
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(candidate, f, indent=2, ensure_ascii=False)
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=self.candidates_dir, suffix='.tmp')
+        try:
+            with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
+                json.dump(candidate, f, indent=2, ensure_ascii=False)
+            os.replace(tmp_path, filepath)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
         return str(filepath)
 
@@ -66,6 +78,10 @@ class EvolutionCandidateManager:
         files = list(self.candidates_dir.glob(f"{candidate_id}-*.json"))
         if not files:
             raise FileNotFoundError(f"未找到候选：{candidate_id}")
+        if len(files) > 1:
+            raise RuntimeError(
+                f"候选 {candidate_id} 存在多个匹配文件，请手动清理重复项：{[f.name for f in files]}"
+            )
 
         try:
             with open(files[0], 'r', encoding='utf-8') as f:
@@ -81,13 +97,17 @@ class EvolutionCandidateManager:
 
         candidates = []
         for candidate_file in self.candidates_dir.glob("*.json"):
-            with open(candidate_file, 'r', encoding='utf-8') as f:
-                candidate = json.load(f)
+            try:
+                with open(candidate_file, 'r', encoding='utf-8') as f:
+                    candidate = json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                print(f"警告：跳过损坏的候选文件 {candidate_file.name}：{e}", file=sys.stderr)
+                continue
 
             # 过滤
-            if status and candidate['status'] != status:
+            if status and candidate.get('status') != status:
                 continue
-            if candidate_type and candidate['type'] != candidate_type:
+            if candidate_type and candidate.get('type') != candidate_type:
                 continue
 
             candidates.append(candidate)
@@ -95,8 +115,8 @@ class EvolutionCandidateManager:
         # 按优先级和创建时间排序
         priority_order = {'high': 0, 'medium': 1, 'low': 2}
         candidates.sort(key=lambda x: (
-            priority_order.get(x['priority'], 3),
-            x['created_at']
+            priority_order.get(x.get('priority'), 3),
+            x.get('created_at', '')
         ), reverse=True)
 
         return candidates
@@ -117,9 +137,7 @@ class EvolutionCandidateManager:
                 'note': decision_notes,
             })
 
-        # 重新保存
-        old_file = list(self.candidates_dir.glob(f"{candidate_id}-*.json"))[0]
-        old_file.unlink()
+        # 原子覆盖写入（save_candidate 使用临时文件 + os.replace，文件名由 id+type 决定不变）
         self.save_candidate(candidate)
 
         return candidate
@@ -136,9 +154,7 @@ class EvolutionCandidateManager:
             'timestamp': datetime.now().isoformat(),
         })
 
-        # 重新保存
-        old_file = list(self.candidates_dir.glob(f"{candidate_id}-*.json"))[0]
-        old_file.unlink()
+        # 原子覆盖写入
         self.save_candidate(candidate)
 
         return candidate
@@ -245,6 +261,8 @@ if __name__ == '__main__':
         print("  approve <id>      批准一个候选")
         print("  reject <id>       拒绝一个候选")
         print("  defer <id>        延迟一个候选")
+        print("  integrate <id>    集成 APPROVED 候选到 runtime 理论文件")
+        print("  dry-run <id>      预览集成内容，不实际写入")
         print("  add-evidence <id> <task> <description>")
         print("                    为 PATTERN 类候选添加证据")
         print("\n" + "="*70)
@@ -282,6 +300,29 @@ if __name__ == '__main__':
             '延迟评审，标记为未来研究'
         )
         print(f"⏸ 已延迟：{candidate['title']}")
+
+    elif sys.argv[1] == 'integrate' and len(sys.argv) > 2:
+        from theory_integration_writer import TheoryIntegrationWriter
+        writer = TheoryIntegrationWriter()
+        result = writer.integrate_by_id(sys.argv[2], dry_run=False)
+        if result['errors']:
+            print(f"✗ 集成出错：")
+            for e in result['errors']:
+                print(f"  {e}")
+        else:
+            print(f"✓ 集成完成，写入：{', '.join(result['files_written'])}")
+            if result.get('candidate_status') == 'INTEGRATED':
+                print(f"  候选状态已更新为 INTEGRATED")
+
+    elif sys.argv[1] == 'dry-run' and len(sys.argv) > 2:
+        from theory_integration_writer import TheoryIntegrationWriter
+        writer = TheoryIntegrationWriter()
+        print(f"[预览] 候选 {sys.argv[2]} 集成计划：\n")
+        result = writer.integrate_by_id(sys.argv[2], dry_run=True)
+        if result['errors']:
+            print(f"✗ 预览错误：{result['errors']}")
+        else:
+            print(f"\n将写入文件：{', '.join(result['files_written'])}")
 
     elif sys.argv[1] == 'add-evidence' and len(sys.argv) > 3:
         task_id = sys.argv[2]

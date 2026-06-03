@@ -5,7 +5,10 @@
 消除了 Week 2 中识别的所有手动步骤和格式转换摩擦
 """
 
+import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 # 导入工具模块
@@ -70,7 +73,6 @@ class IntegratedFeedbackWorkflow:
             else:
                 # 已是 JSON 格式
                 with open(feedback_file, 'r', encoding='utf-8') as f:
-                    import json
                     json_content = json.load(f)
                 json_file = feedback_file
                 result['steps_completed'].append('格式检测：已是 JSON 格式')
@@ -115,7 +117,6 @@ class IntegratedFeedbackWorkflow:
                     print("【第 4 步】候选管理界面")
                     print("=" * 70)
 
-                import json
                 with open(candidate_file, 'r', encoding='utf-8') as f:
                     candidate = json.load(f)
 
@@ -137,7 +138,6 @@ class IntegratedFeedbackWorkflow:
                 print("【第 5 步】希望追踪检查")
                 print("=" * 70)
 
-            import json
             with open(json_file, 'r', encoding='utf-8') as f:
                 feedback_json = json.load(f)
 
@@ -172,9 +172,21 @@ class IntegratedFeedbackWorkflow:
                         candidate, hope_tracking
                     )
 
-                    # 保存更新后的候选
-                    with open(candidate_file, 'w', encoding='utf-8') as f:
-                        json.dump(enriched_candidate, f, indent=2, ensure_ascii=False)
+                    # 原子写入：先写临时文件再重命名，防止写入中途崩溃导致候选损坏
+                    candidate_path = Path(candidate_file)
+                    tmp_fd, tmp_path = tempfile.mkstemp(
+                        dir=candidate_path.parent, suffix='.tmp'
+                    )
+                    try:
+                        with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
+                            json.dump(enriched_candidate, f, indent=2, ensure_ascii=False)
+                        os.replace(tmp_path, candidate_file)
+                    except Exception:
+                        try:
+                            os.unlink(tmp_path)
+                        except OSError:
+                            pass
+                        raise
 
                     if verbose:
                         print(f"\n  候选已用希望追踪信息丰富：")

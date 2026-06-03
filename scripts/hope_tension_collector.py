@@ -11,7 +11,7 @@ hope_tension_collector.py — 希望=本原张力 健康扫描器
   3. 张力：约束/展开比率、新结构生成、失衡告警
 """
 
-import os, json, datetime, re
+import os, json, datetime, re, sys
 from pathlib import Path
 
 CONTINUITY = os.path.expanduser("~/.hermes/continuity")
@@ -19,6 +19,8 @@ CORE = os.path.join(CONTINUITY, "core")
 RUNTIME = os.path.join(CONTINUITY, "runtime")
 ARCHIVE = os.path.join(CONTINUITY, "archive")
 SCRIPTS = os.path.join(CONTINUITY, "scripts")
+
+HISTORY_FILE = os.path.join(RUNTIME, "tension_history.jsonl")
 
 
 def file_age_days(path):
@@ -233,10 +235,116 @@ def format_report(signals):
     return "\n".join(lines)
 
 
+# ======================================================================
+# Time-series support
+# ======================================================================
+
+def save_snapshot(signals: dict, history_file: str = None) -> None:
+    """Append signals dict as one JSON line to HISTORY_FILE (or supplied path)."""
+    path = history_file if history_file is not None else HISTORY_FILE
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(signals, ensure_ascii=False) + "\n")
+
+
+def load_history(n: int = 20, history_file: str = None) -> list:
+    """Read last N snapshots from HISTORY_FILE. Returns [] if file missing."""
+    path = history_file if history_file is not None else HISTORY_FILE
+    if not os.path.exists(path):
+        return []
+    lines = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    lines.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+    return lines[-n:]
+
+
+def format_trend_report(history: list) -> str:
+    """
+    Format a trend table comparing latest snapshot to previous ones.
+    Shows arrows (↑ ↓ →) for numeric metrics.
+    """
+    if not history:
+        return "（无历史记录）"
+
+    n = len(history)
+    latest = history[-1]
+    prev = history[-2] if n >= 2 else None
+
+    def arrow(latest_val, prev_val):
+        if prev_val is None or not isinstance(latest_val, (int, float)):
+            return "→"
+        if isinstance(latest_val, (int, float)) and isinstance(prev_val, (int, float)):
+            if latest_val > prev_val:
+                return "↑"
+            elif latest_val < prev_val:
+                return "↓"
+        return "→"
+
+    # Flatten key metrics from latest snapshot
+    metrics = {}
+    for section_key in ("law_side", "expansion_side"):
+        section = latest.get(section_key, {})
+        for k, v in section.items():
+            if isinstance(v, (int, float)) and v is not None:
+                metrics[k] = v
+    metrics["总体判定"] = latest.get("overall", "unknown")
+
+    # Get prev values for the same keys
+    prev_metrics = {}
+    if prev:
+        for section_key in ("law_side", "expansion_side"):
+            section = prev.get(section_key, {})
+            for k, v in section.items():
+                prev_metrics[k] = v
+        prev_metrics["总体判定"] = prev.get("overall", "unknown")
+
+    lines = [
+        f"希望=本原张力 趋势报告（最近 {n} 次）",
+        "=" * 45,
+        f"{'指标':<28} {'最新值':>10}    {'趋势':>4}",
+        "-" * 45,
+    ]
+
+    for key, val in metrics.items():
+        prev_val = prev_metrics.get(key)
+        trend = arrow(val, prev_val)
+        val_str = str(val) if val is not None else "N/A"
+        lines.append(f"{key:<28} {val_str:>10}    {trend:>4}")
+
+    lines.append("=" * 45)
+    lines.append(f"时间戳: {latest.get('timestamp', 'N/A')}")
+    return "\n".join(lines)
+
+
 if __name__ == "__main__":
-    signals = scan()
-    print(format_report(signals))
-    # Optionally output JSON for programmatic use
-    if "--json" in os.sys.argv:
-        print("\n--- JSON ---")
-        print(json.dumps(signals, indent=2, ensure_ascii=False))
+    args = sys.argv[1:]
+
+    show_history = "--history" in args
+    do_save = "--save" in args
+    show_json = "--json" in args
+
+    if show_history:
+        # Parse optional N after --history
+        idx = args.index("--history")
+        n = 10
+        if idx + 1 < len(args):
+            try:
+                n = int(args[idx + 1])
+            except ValueError:
+                pass
+        history = load_history(n)
+        print(format_trend_report(history))
+    else:
+        signals = scan()
+        if do_save:
+            save_snapshot(signals)
+        print(format_report(signals))
+        if show_json:
+            print("\n--- JSON ---")
+            print(json.dumps(signals, indent=2, ensure_ascii=False))

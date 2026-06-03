@@ -6,13 +6,19 @@
 
 import json
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 
 class FeedbackClassifier:
     """分类反馈并标记为理论演化候选"""
 
-    def __init__(self):
+    PATTERN_SIMILARITY_THRESHOLD = 0.15
+
+    def __init__(self, candidate_manager=None):
+        # 可选注入 EvolutionCandidateManager，用于跨任务 PATTERN 关联
+        self._candidate_manager = candidate_manager
+
         # 关键词定义
         self.anomaly_indicators = [
             '理论失败', '预测失败', '违反', '出乎预料', '意外',
@@ -161,7 +167,39 @@ class FeedbackClassifier:
         with open(feedback_file_path, 'r', encoding='utf-8') as f:
             feedback = json.load(f)
 
+        is_valid, error_msg = self._validate_feedback_structure(feedback)
+        if not is_valid:
+            return {
+                'feedback_file': str(feedback_file_path),
+                'classification': 'INVALID',
+                'priority': None,
+                'candidate_generated': False,
+                'candidate_file': None,
+                'validation_error': error_msg,
+            }
+
         classification = self.classify_feedback(feedback)
+
+        # P1.2 跨任务 PATTERN 关联：若 PATTERN 且有候选管理器，优先合并到已有 PATTERN 候选
+        existing_pattern_id = None
+        if classification == 'PATTERN' and self._candidate_manager is not None:
+            existing_pattern_id = self._find_similar_pattern(feedback)
+
+        if existing_pattern_id:
+            evidence_task = feedback.get('task_id', 'unknown')
+            evidence_desc = (
+                f"{feedback.get('observation', '')} | {feedback.get('limitation', '')}"
+            )
+            self._candidate_manager.add_evidence(existing_pattern_id, evidence_task, evidence_desc)
+            return {
+                'feedback_file': str(feedback_file_path),
+                'classification': classification,
+                'priority': self._determine_priority(classification),
+                'candidate_generated': False,
+                'candidate_file': None,
+                'evidence_added_to': existing_pattern_id,
+            }
+
         candidate = self.generate_candidate(feedback, classification)
 
         result = {
@@ -177,6 +215,71 @@ class FeedbackClassifier:
             result['candidate_file'] = candidate_file
 
         return result
+
+    def _find_similar_pattern(self, feedback: dict) -> str:
+        """
+        在已有 PATTERN 候选中查找与当前反馈相似的候选。
+        若相似度超过阈值，返回该候选 ID；否则返回 None。
+        """
+        try:
+            existing = self._candidate_manager.list_candidates(
+                candidate_type='PATTERN', status='CANDIDATE'
+            )
+        except Exception:
+            return None
+
+        feedback_text = (
+            feedback.get('observation', '') + ' ' +
+            feedback.get('limitation', '') + ' ' +
+            feedback.get('suggestion', '')
+        )
+
+        best_id = None
+        best_score = 0.0
+
+        for cand in existing:
+            cand_text = (
+                cand.get('title', '') + ' ' +
+                cand.get('description', '') + ' ' +
+                cand.get('improvement_direction', '')
+            )
+            score = self._compute_similarity(feedback_text, cand_text)
+            if score > best_score:
+                best_score = score
+                best_id = cand.get('id')
+
+        if best_score >= self.PATTERN_SIMILARITY_THRESHOLD:
+            return best_id
+        return None
+
+    def _compute_similarity(self, text1: str, text2: str) -> float:
+        """计算两段文本的关键词相似度（字级二元组 Jaccard 系数）"""
+        stopwords = {
+            '的', '了', '在', '是', '有', '和', '也', '都', '不', '这', '对', '于',
+            '与', '其', '为', '以', '及', '但', '从', '而', '中', '到', '被', '将',
+            '能', '会', '应该', '没有', '可以', '一个', '进行',
+        }
+
+        def tokenize(text):
+            tokens = set()
+            words = re.findall(r'[一-鿿]+|[a-zA-Z]{2,}', text.lower())
+            for word in words:
+                if word not in stopwords and len(word) >= 2:
+                    tokens.add(word)
+                    # 汉字二元组，提高短语粒度匹配
+                    for i in range(len(word) - 1):
+                        bigram = word[i:i+2]
+                        if bigram not in stopwords:
+                            tokens.add(bigram)
+            return tokens
+
+        t1 = tokenize(text1)
+        t2 = tokenize(text2)
+        if not t1 or not t2:
+            return 0.0
+        intersection = len(t1 & t2)
+        union = len(t1 | t2)
+        return intersection / union if union > 0 else 0.0
 
     def print_result(self, result):
         """美化打印分类结果"""
