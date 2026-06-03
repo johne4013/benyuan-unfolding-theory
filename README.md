@@ -56,6 +56,13 @@ benyuan-unfolding-theory/
 │   ├── state.md                  # 协同模式与休息需求
 │   ├── conflicts.md              # 未融合的概念冲突
 │   ├── HOPE_STATE.md             # 希望/张力监视器
+│   ├── FEEDBACK_TEMPLATE.md      # 标准反馈模板（PORF 5维）
+│   ├── PORF_OBSERVATION5_EXAMPLES.md  # 希望追踪观察示例
+│   ├── practice_observation_framework.md  # 实践观察框架（PORF）
+│   ├── task_theory_application_framework.md  # 任务理论应用框架（TTAF）
+│   ├── value_judgment_protocol.md  # 美/丑/善/恶判断协议
+│   ├── trust_deception_protocol.md # 信任/欺骗判断协议
+│   ├── theory_to_code_mapping.md   # 理论概念→代码实现映射
 │   ├── *_draft.md                # 候选概念草案（概念/理论/未知/失败条件/科学接口）
 │   ├── practice_methodology.md   # 实践方法论
 │   ├── index_theory.md           # 理论子索引
@@ -63,11 +70,27 @@ benyuan-unfolding-theory/
 │   ├── index_hermes.md           # Hermes 工程子索引
 │   ├── index_history.md          # 历史变更子索引
 │   └── ...                       # Hermes 协议与工程文件
-└── scripts/                      ← Python 自动化工具
-    ├── hope_tension_collector.py  # 希望张力健康扫描
-    ├── feedback_classifier.py     # 反馈分类器
-    └── ...                        # 其他支持脚本
+├── scripts/                      ← 🟢 自动化工具（Hermes 自主操作层）
+│   ├── hope_tension_collector.py  # 希望=本原张力健康扫描（含时序趋势）
+│   ├── feedback_classifier.py     # 反馈分类器（TEMPORARY/PATTERN/ANOMALY/ENHANCEMENT）
+│   ├── evolution_candidate_manager.py  # 候选生命周期管理（JSON文件存储）
+│   ├── candidate_store.py         # SQLite候选存储（索引查询、统计、去重）
+│   ├── auto_feedback_submitter.py # 编程式反馈提交（P0.1，闭合反馈环路）
+│   ├── theory_integration_writer.py  # 候选→runtime文档写入（P0.2，闭合集成环路）
+│   ├── integrated_feedback_workflow.py  # 一键完整反馈工作流
+│   ├── feedback_format_converter.py    # Markdown ↔ JSON 格式转换
+│   └── README.md                  # 脚本详细使用说明
+└── tests/                        ← 🧪 自动化测试（pytest）
+    ├── conftest.py                # 自动将 scripts/ 加入 sys.path
+    ├── test_candidate_store.py    # CandidateStore 8项测试
+    ├── test_evolution_candidate_manager.py  # 候选管理器 7项测试
+    ├── test_feedback_classifier.py  # 分类器 9项测试
+    ├── test_auto_feedback_submitter.py  # 提交器 5项测试
+    ├── test_theory_integration_writer.py  # 集成写入器 5项测试
+    └── test_hope_tension_collector.py  # 张力采集器 4项测试
 ```
+
+运行测试：`python3 -m pytest tests/ -v`（38项，全部通过）
 
 ### 分层说明 / Layer Semantics
 
@@ -75,7 +98,8 @@ benyuan-unfolding-theory/
 |------|------|----------|------|
 | 🔴 **core/** | 核心保护层 | 慢更新，需显式批准 | 理论的最小稳定结构，不可自动修改 |
 | 🟡 **runtime/** | 运行时工作层 | 快速迭代，可提案 | 候选概念、反思、记忆、协议 |
-| 📦 **scripts/** | 自动化工具 | 只读扫描 | Python 脚本，不占对话上下文 |
+| 🟢 **scripts/** | 自动化工具层 | Hermes 自主操作 | 反馈处理、候选管理、健康扫描，写入 runtime/ |
+| 🧪 **tests/** | 测试层 | 随脚本同步维护 | pytest，保证工具链核心逻辑正确性 |
 | 🗄️ **archive/** | 历史归档 | 只追加 | 旧内容归档（本仓库不包含） |
 
 ---
@@ -98,6 +122,54 @@ benyuan-unfolding-theory/
 - **科学接口**：`runtime/index_science.md` →
 - **工程协同**：`runtime/index_hermes.md` →
 - **历史变迁**：`runtime/index_history.md` →
+
+---
+
+## 理论演化工具链 / Theory Evolution Toolchain
+
+系统内置完整的反馈→演化闭环，使理论能够从实践中自我修正：
+
+```
+TTAF（任务前理论检视）
+  ↓
+执行任务
+  ↓
+PORF（5维实践观察：对齐/局限/决策/自维护/希望）
+  ↓
+auto_feedback_submitter.py  ——  编程式提交反馈（无需手动填模板）
+  ↓
+integrated_feedback_workflow.py  ——  自动分类 + 候选生成
+  ↓                                    ↑ PATTERN 跨任务合并（Jaccard 相似度）
+feedback_classifier.py              feedback_classifier.py
+（TEMPORARY / PATTERN / ANOMALY / ENHANCEMENT）
+  ↓
+evolution_candidate_manager.py / candidate_store.py
+（候选生命周期：CANDIDATE → APPROVED → INTEGRATED）
+  ↓
+theory_integration_writer.py  ——  APPROVED 候选写入 runtime/ 草案文件
+  ↓
+HOPE_STATE.md 张力更新
+  ↓
+王俊华审批 → core/ 更新（🔴层，手动）
+```
+
+### 核心脚本快速上手
+
+```bash
+# 提交一条反馈（自动分类、生成候选）
+python3 scripts/auto_feedback_submitter.py \
+    "任务名称" "观察到的现象" "理论局限" "改进建议"
+
+# 查看所有待审候选
+python3 scripts/evolution_candidate_manager.py list
+
+# 将 APPROVED 候选集成进 runtime/
+python3 scripts/evolution_candidate_manager.py integrate <candidate-id>
+
+# 扫描系统健康状态（保存快照，查看趋势）
+python3 scripts/hope_tension_collector.py --save
+python3 scripts/hope_tension_collector.py --history 10
+```
 
 ---
 
