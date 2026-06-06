@@ -4,10 +4,7 @@
 生成、查看和管理理论演化候选
 """
 
-import json
-import os
 import sys
-import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict
@@ -15,9 +12,13 @@ from typing import List, Dict
 class EvolutionCandidateManager:
     """管理理论演化候选"""
 
-    def __init__(self, candidates_dir='~/.hermes/continuity/runtime/evolution_candidates'):
+    def __init__(self, candidates_dir='~/.hermes/continuity/runtime/evolution_candidates', db_path=None):
         self.candidates_dir = Path(candidates_dir).expanduser()
         self.candidates_dir.mkdir(parents=True, exist_ok=True)
+        if db_path is None:
+            db_path = str(self.candidates_dir.parent / "candidates.db")
+        from candidate_store import CandidateStore
+        self._store = CandidateStore(db_path=db_path)
 
     def create_candidate(self, candidate_type: str, title: str, description: str,
                         source_task: str, improvement_direction: str = None) -> Dict:
@@ -53,64 +54,20 @@ class EvolutionCandidateManager:
         return priorities.get(candidate_type, 'medium')
 
     def save_candidate(self, candidate: Dict) -> str:
-        """保存候选到文件（原子写入：先写临时文件，再重命名，防止写入中途崩溃导致数据损坏）"""
+        """保存候选到存储后端，返回路径字符串（向后兼容）"""
 
-        filename = f"{candidate['id']}-{candidate['type'].lower()}.json"
-        filepath = self.candidates_dir / filename
-
-        tmp_fd, tmp_path = tempfile.mkstemp(dir=self.candidates_dir, suffix='.tmp')
-        try:
-            with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
-                json.dump(candidate, f, indent=2, ensure_ascii=False)
-            os.replace(tmp_path, filepath)
-        except Exception:
-            try:
-                os.unlink(tmp_path)
-            except OSError:
-                pass
-            raise
-
-        return str(filepath)
+        self._store.save(candidate)
+        return str(self.candidates_dir / f"{candidate['id']}-{candidate['type'].lower()}.json")
 
     def load_candidate(self, candidate_id: str) -> Dict:
         """加载一个候选"""
 
-        files = list(self.candidates_dir.glob(f"{candidate_id}-*.json"))
-        if not files:
-            raise FileNotFoundError(f"未找到候选：{candidate_id}")
-        if len(files) > 1:
-            raise RuntimeError(
-                f"候选 {candidate_id} 存在多个匹配文件，请手动清理重复项：{[f.name for f in files]}"
-            )
-
-        try:
-            with open(files[0], 'r', encoding='utf-8') as f:
-                candidate = json.load(f)
-            return candidate
-        except json.JSONDecodeError as e:
-            raise ValueError(f"候选文件格式错误 {files[0]}：{str(e)}")
-        except Exception as e:
-            raise RuntimeError(f"加载候选失败：{str(e)}")
+        return self._store.load(candidate_id)
 
     def list_candidates(self, status: str = None, candidate_type: str = None) -> List[Dict]:
         """列出所有候选"""
 
-        candidates = []
-        for candidate_file in self.candidates_dir.glob("*.json"):
-            try:
-                with open(candidate_file, 'r', encoding='utf-8') as f:
-                    candidate = json.load(f)
-            except (json.JSONDecodeError, OSError) as e:
-                print(f"警告：跳过损坏的候选文件 {candidate_file.name}：{e}", file=sys.stderr)
-                continue
-
-            # 过滤
-            if status and candidate.get('status') != status:
-                continue
-            if candidate_type and candidate.get('type') != candidate_type:
-                continue
-
-            candidates.append(candidate)
+        candidates = self._store.query(status=status, candidate_type=candidate_type)
 
         # 按优先级和创建时间排序
         priority_order = {'high': 0, 'medium': 1, 'low': 2}
@@ -120,6 +77,9 @@ class EvolutionCandidateManager:
         ), reverse=True)
 
         return candidates
+
+    def get_stats(self):
+        return self._store.get_stats()
 
     def update_candidate_status(self, candidate_id: str, new_status: str,
                                decision_notes: str = None) -> Dict:
