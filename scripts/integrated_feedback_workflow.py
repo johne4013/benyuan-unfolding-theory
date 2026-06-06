@@ -120,6 +120,9 @@ class IntegratedFeedbackWorkflow:
                 with open(candidate_file, 'r', encoding='utf-8') as f:
                     candidate = json.load(f)
 
+                # 同步存入 SQLite，使 evolution_candidate_manager 的查询/审批可以找到此候选
+                self.manager.save_candidate(candidate)
+
                 self.manager.print_candidate(candidate)
                 result['steps_completed'].append("候选显示：已显示候选详情")
 
