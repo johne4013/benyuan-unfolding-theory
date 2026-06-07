@@ -14,6 +14,7 @@ def make_runtime(tmp_path):
     (runtime / "failure_conditions_draft.md").write_text("# Failure Conditions\n", encoding="utf-8")
     (runtime / "HOPE_STATE.md").write_text("# Hope State\n", encoding="utf-8")
     (runtime / "theory_v2_draft.md").write_text("# Theory v2 Draft\n", encoding="utf-8")
+    (runtime / "science_interfaces_draft.md").write_text("# Science Interfaces Draft\n", encoding="utf-8")
     return runtime
 
 
@@ -83,3 +84,15 @@ def test_integrate_hope_direction_updates_hope_state(tmp_path):
     assert "HOPE_STATE.md" in result["files_written"]
     content = (tmp_path / "continuity" / "runtime" / "HOPE_STATE.md").read_text(encoding="utf-8")
     assert "推进：opens new possibilities" in content
+
+
+def test_integrate_science_candidate_routes_to_science_interfaces(tmp_path):
+    writer = make_writer(tmp_path)
+    cand = base_candidate(ctype="ENHANCEMENT", expansion="混合型", hope="")
+    cand["title"] = "耗散结构建立在量子相干底座上的假说"
+    cand["description"] = "耗散结构可能建立在相干状态底座上，展开属性=相干底座，法则属性=退相干机制。"
+    result = writer.integrate(cand, dry_run=False)
+    assert "science_interfaces_draft.md" in result["files_written"]
+    assert "concepts_v2_draft.md" not in result["files_written"]
+    content = (tmp_path / "continuity" / "runtime" / "science_interfaces_draft.md").read_text(encoding="utf-8")
+    assert "耗散结构" in content

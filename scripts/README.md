@@ -28,6 +28,10 @@ theory_application_checker  →  执行  →  auto_feedback_submitter
 后台监控：
   hope_tension_collector.py  —  约束/展开/张力三维健康扫描（含时序趋势）
   memory_metabolism.py       —  文件膨胀/失活/结构完整性扫描
+
+认知操作工具链（新增）：
+  analogy_finder.py   —  类比识别（局限性相同 + 约束本体归一化 + 法则属性推断）
+  llm_analogizer.py   —  LLM 增强的类比与想象（类相干多方向推演，需 ANTHROPIC_API_KEY）
 ```
 
 ---
@@ -178,6 +182,39 @@ python3 memory_metabolism.py --json # 同时输出 JSON
 
 ---
 
+### 11. analogy_finder.py ⭐ [2026-06-07]
+
+**功能：** 类比识别工具（本地，无需 API）  
+**定义：** 类比 = 对两个状态进行结构/功能比较，识别出局限性相同的过程  
+**特性：** CJK 二元组 Jaccard + 约束本体归一化（近义词映射）+ 法则属性推断（8 类路由）
+
+```bash
+python3 analogy_finder.py "梦境中法则约束松弛" "想象受可理解性约束"
+python3 analogy_finder.py --llm "描述A" "描述B"          # LLM 增强（有 Key 时）
+python3 analogy_finder.py --against-candidates "新观察"   # 与候选库比较
+python3 analogy_finder.py --verbose "描述A" "描述B"       # 显示全部约束短语
+```
+
+---
+
+### 12. llm_analogizer.py ⭐ [2026-06-07]
+
+**功能：** LLM 增强的类比与想象工具（需要 `ANTHROPIC_API_KEY`）  
+**两个子命令：**
+- `compare`：识别两段描述的局限性相同，推断法则属性
+- `imagine`：从起点出发，类相干模式下生成 N 个推演方向（维持多态共存，标注坍缩触发条件）
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+
+python3 llm_analogizer.py compare "描述A" "描述B"
+python3 llm_analogizer.py imagine "当前理论：法则属性和展开属性在本原层未分化" --n 3
+python3 llm_analogizer.py imagine "起点描述" --collapse "选择的方向"
+python3 llm_analogizer.py compare --against-candidates "新观察"
+```
+
+---
+
 ## 快速上手：完整工作流示例
 
 ```bash
@@ -216,9 +253,11 @@ python3 scripts/memory_metabolism.py
 | 候选管理 | 候选生成→审批 | `evolution_candidate_manager.py` + `candidate_store.py` |
 | 候选集成 | APPROVED→INTEGRATED | `theory_integration_writer.py` |
 | 健康监控 | 持续 | `hope_tension_collector.py` + `memory_metabolism.py` |
+| 类比识别 | 随时 | `analogy_finder.py`（本地）/ `llm_analogizer.py compare`（LLM）|
+| 想象推演 | 随时 | `llm_analogizer.py imagine`（类相干多方向，需 API Key）|
 
 ---
 
-**最后更新：** 2026-06-06  
-**测试覆盖：** 48 项（`python3 -m pytest tests/ -v`，全部通过）  
+**最后更新：** 2026-06-07  
+**测试覆盖：** 73 项（`python3 -m pytest tests/ -v`，全部通过）  
 **CI：** GitHub Actions 每次 push/PR 自动触发

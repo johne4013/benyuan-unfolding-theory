@@ -171,16 +171,30 @@ class TheoryIntegrationWriter:
         lines.append("\n---")
         return "\n".join(lines)
 
+    # 科学接口关键词：命中则路由到 science_interfaces_draft.md
+    _SCIENCE_KEYWORDS = [
+        '量子', '相干', '退相干', '耗散结构', '热力学', '熵', '物理接口',
+        '神经科学', '生物物理', '量子力学', '宇宙学', 'Fleming', '普里戈金',
+        '科学接口', '自然科学', '实验验证', '可观测', '跨学科',
+    ]
+
     def _get_target_draft(self, candidate: Dict) -> Optional[Path]:
         """根据候选类型决定写入哪个草案文件"""
         ctype = candidate.get("type", "")
         expansion_type = candidate.get("expansion_type", "pending")
 
         if ctype == "ENHANCEMENT":
+            # 优先检查是否为科学接口候选
+            combined = (
+                candidate.get("title", "") + " " +
+                candidate.get("description", "") + " " +
+                candidate.get("improvement_direction", "")
+            )
+            if any(kw in combined for kw in self._SCIENCE_KEYWORDS):
+                return self.runtime / "science_interfaces_draft.md"
             if expansion_type == "展开属性型":
                 return self.runtime / "theory_v2_draft.md"
-            else:
-                return self.runtime / "concepts_v2_draft.md"
+            return self.runtime / "concepts_v2_draft.md"
         elif ctype == "ANOMALY":
             return self.runtime / "failure_conditions_draft.md"
         # PATTERN 已通过 reflection.md 的步骤 1 记录，无需额外草案写入
