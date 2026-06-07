@@ -1,152 +1,244 @@
 # Hermes 自动化脚本集
 
-本目录包含 Hermes 系统的所有自动化工具脚本，形成从"理论检视→实践执行→反馈处理→理论演化"的完整工具链。
+本目录包含 Hermes 系统的所有自动化工具脚本，形成从"理论检视→实践执行→反馈处理→理论演化"的完整闭环工具链。所有脚本均属于 **🟢 层操作**（Fava 自主信息组织），不自动修改 core/。
 
 ---
 
-## 脚本清单与功能
+## 工具链总览
 
-### 1. theory_application_checker.py
-**功能：** 任务执行前的理论适配检查（TTAF）  
-**输入：** 任务描述或关键词  
-**输出：** TTAF检视清单 (JSON)  
-**何时运行：** 任务开始时  
+```
+任务前                  任务中              任务后
+  ↓                       ↓                  ↓
+theory_application_checker  →  执行  →  auto_feedback_submitter
+（TTAF 清单自动生成）              ↑           ↓
+                           PORF 观察   integrated_feedback_workflow
+                                            ↓
+                                   feedback_classifier（分类）
+                                            ↓
+                             evolution_candidate_manager（候选管理）
+                                      ↓         ↑ 相似合并
+                               candidate_store（SQLite 存储）
+                                            ↓
+                               theory_integration_writer（集成写入）
+                                            ↓
+                                      runtime/ 草案文件
+                                            ↓
+                                  王俊华审批 → core 更新（🔴）
 
-关键词匹配识别任务层级（simple/engineering/subject/theory/core），自动生成对应深度的检视清单。
+后台监控：
+  hope_tension_collector.py  —  约束/展开/张力三维健康扫描（含时序趋势）
+  memory_metabolism.py       —  文件膨胀/失活/结构完整性扫描
 
----
-
-### 2. feedback_classifier.py ⭐ [已更新 2026-05-29]
-**功能：** 自动分类反馈为 TEMPORARY/PATTERN/ANOMALY/ENHANCEMENT  
-**输入：** 反馈记录 (JSON或Markdown)  
-**输出：** 分类结果 + 优先级  
-**何时运行：** 任务完成后，人工编写反馈后  
-
-**最新改进：** 
-- 修复了"问题"关键词的误判（"科学问题"不再被错分）
-- 使用更精确的排除条件：只排除"存在问题"、"无法"等实际问题表述
-
----
-
-### 3. evolution_candidate_manager.py ⭐ [已扩展 2026-05-29]
-**功能：** 管理理论演化候选的完整生命周期  
-**输入：** 候选数据  
-**输出：** 候选文件 (JSON) + 生命周期管理  
-**何时运行：** 候选的生成/修改/评审/集成  
-
-**最新改进：**
-- 新增三个字段：`expansion_type`、`hope_direction`、`opens_new_possibility`
-- 新增方法 `enrich_candidate_from_hope_tracking()` 可从PORF观察5自动提取希望追踪信息
-- 所有新字段都有合理的默认值（pending/待确认）
+认知操作工具链（新增）：
+  analogy_finder.py   —  类比识别（局限性相同 + 约束本体归一化 + 法则属性推断）
+  llm_analogizer.py   —  LLM 增强的类比与想象（类相干多方向推演，需 ANTHROPIC_API_KEY）
+```
 
 ---
 
-### 4. feedback_format_converter.py
-**功能：** Markdown ↔ JSON 格式转换  
-**输入：** 反馈记录 (.md 或 .json)  
-**输出：** 转换后的反馈记录  
-**何时运行：** 在integrated_feedback_workflow中自动调用  
+## 脚本清单
 
----
+### 1. theory_application_checker.py ⭐ [2026-06-06]
 
-### 5. integrated_feedback_workflow.py ⭐ [即将更新 2026-05-29]
-**功能：** 完整的反馈处理工作流（一键处理）  
-**工作流步骤：**
-1. 格式检测
-2. 自动转换（Markdown → JSON）
-3. 自动分类（feedback_classifier）
-4. 候选生成（evolution_candidate_manager）
-5. **希望追踪检查** [NEW]
+**功能：** 任务前 TTAF（任务理论应用框架）检视清单自动生成  
+**输入：** 任务描述字符串  
+**输出：** 按层级生成的 D1～D6 维度 JSON 清单
 
-**输入：** 单个反馈文件或批量处理  
-**输出：** 分类结果 + evolution_candidate + 希望追踪报告  
-**何时运行：** 任务反馈完成后，一键触发  
-
----
-
-## 使用示例
-
-### 推荐：快速工作流（一键处理）
+关键词自动识别任务层级（simple / engineering / subject / theory / core），生成对应深度的检视清单。core 层操作自动附加警告提示。
 
 ```bash
-# 1. 执行任务，填写完整反馈（包括PORF观察1-5）
-vim ~/.hermes/continuity/runtime/practice_feedbacks/task-20260529-001-feedback.md
-
-# 2. 一键处理反馈
-python3 scripts/integrated_feedback_workflow.py \
-    runtime/practice_feedbacks/task-20260529-001-feedback.md
-
-# 输出：
-# - 分类结果 (PATTERN/ANOMALY/ENHANCEMENT)
-# - evolution_candidate JSON文件（含expansion_type/hope_direction）
-# - 希望追踪报告（是否需要更新HOPE_STATE.md）
+python3 theory_application_checker.py "优化 SQLite 查询性能"
+python3 theory_application_checker.py "修改 core/concepts.md" --level core
+python3 theory_application_checker.py "展开属性与法则属性的边界" --save
 ```
 
-### 可选：分步工作流（如需定制）
+---
+
+### 2. feedback_classifier.py ⭐ [已更新 2026-06-06]
+
+**功能：** 自动分类反馈为 TEMPORARY / PATTERN / ANOMALY / ENHANCEMENT  
+**输入：** 反馈记录（JSON 文件）  
+**输出：** 分类结果 + 候选生成
+
+**新增：** 跨任务 PATTERN 相似度合并（CJK 二元组 Jaccard，阈值 0.15），相似 PATTERN 自动合并为证据而非创建重复候选。
+
+---
+
+### 3. evolution_candidate_manager.py ⭐ [已重构 2026-06-06]
+
+**功能：** 管理理论演化候选完整生命周期  
+**存储：** SQLite（通过 `candidate_store.py`，不再是纯 JSON 文件）  
+**状态链：** `CANDIDATE → APPROVED → INTEGRATED`
 
 ```bash
-# 1. 只分类
-python3 scripts/feedback_classifier.py --input feedback.md
-
-# 2. 生成候选
-python3 scripts/evolution_candidate_manager.py create \
-    --type PATTERN \
-    --title "展开属性识别不足" \
-    --source task-001
-
-# 3. 管理候选
-python3 scripts/evolution_candidate_manager.py list
-python3 scripts/evolution_candidate_manager.py show candidate-id
-python3 scripts/evolution_candidate_manager.py approve candidate-id
-
-# 4. 从希望追踪自动丰富候选
-python3 scripts/evolution_candidate_manager.py enrich \
-    --candidate-id cand-20260529-001 \
-    --hope-tracking-file hope_data.json
+python3 evolution_candidate_manager.py list
+python3 evolution_candidate_manager.py list-pending
+python3 evolution_candidate_manager.py show <id>
+python3 evolution_candidate_manager.py approve <id>
+python3 evolution_candidate_manager.py reject <id>
+python3 evolution_candidate_manager.py integrate <id>   # 写入 runtime 草案
+python3 evolution_candidate_manager.py dry-run <id>     # 预览，不写入
+python3 evolution_candidate_manager.py add-evidence <id> <task> <描述>
 ```
 
 ---
 
-## 脚本之间的数据流
+### 4. candidate_store.py ⭐ [2026-06-06]
 
-```
-理论应用前            实践观察中           反馈处理后
-   ↓                    ↓                   ↓
+**功能：** SQLite 候选持久化存储（`evolution_candidate_manager` 的底层后端）  
+**特性：** 带索引的多条件查询、统计、潜在重复检测、JSON 目录导入/导出（原子写入）
 
-theory_application_checker.py    →  PORF观察  →  feedback_classifier.py
-(TTAF检视清单)                      (含观察5)     (分类：P/A/E/T)
-                                                        ↓
-                                          evolution_candidate_manager.py
-                                          (生成候选+希望追踪自动提取)
-                                                        ↓
-                                          integrated_workflow.py
-                                          (一键完整流程)
-                                                        ↓
-                                          HOPE_STATE.md更新提示
-                                          (是否需要更新)
+```bash
+python3 candidate_store.py stats
+python3 candidate_store.py list [--status CANDIDATE] [--type PATTERN] [--search 关键词]
+python3 candidate_store.py duplicates
+python3 candidate_store.py import <dir>
+python3 candidate_store.py export <dir>
 ```
 
 ---
 
-## 关键改进说明（2026-05-29）
+### 5. auto_feedback_submitter.py ⭐ [2026-06-06]
 
-### 问题1：feedback_classifier中的"问题"误判
-**问题：** 当反馈中包含"问题"（如"科学问题"），ENHANCEMENT信号被误判为TEMPORARY  
-**根因：** 原代码用 `'问题' not in description` 排除所有包含"问题"的文本  
-**修复：** 改为检查"存在问题"、"无法"等实际问题表述  
-**影响：** ENHANCEMENT类型的候选不再被漏掉
+**功能：** 编程式反馈提交（P0.1，闭合反馈提交环路）  
+**核心价值：** 无需手动填写模板，Hermes 可在任务完成后直接调用
 
-### 问题2：candidate生成时缺少希望追踪字段
-**问题：** evolution_candidate没有字段记录这个候选与"希望"的关系  
-**根因：** 系统设计时"希望"还不是显式概念  
-**修复：** 添加三个新字段（expansion_type/hope_direction/opens_new_possibility）和自动提取方法  
-**影响：** 每个候选都能追踪其展开属性特征和对系统希望的推进方向
+```bash
+# 完整提交（自动分类 + 候选生成）
+python3 auto_feedback_submitter.py "任务名称" "观察" "局限" "建议"
 
-### 问题3：候选管理缺乏理论语境
-**问题：** 反馈被分类，但分类后的候选对本原展开论的贡献不清晰  
-**根因：** 候选只记录"改进方向"，不追踪"这是什么类型的改进"  
-**修复：** 通过expansion_type字段区分"法则属性型"vs"展开属性型"vs"混合型"  
-**影响：** 系统现在能按本原展开论的理论框架理解每个改进的性质
+# 快速提交
+python3 auto_feedback_submitter.py --quick "任务名称" --rating good --summary "一句话总结"
+
+# 查看已提交反馈
+python3 auto_feedback_submitter.py --list
+```
+
+---
+
+### 6. theory_integration_writer.py ⭐ [2026-06-06]
+
+**功能：** APPROVED 候选→runtime 草案文件自动写入（P0.2，闭合集成环路）  
+**路由逻辑：**
+- ENHANCEMENT（法则属性型） → `concepts_v2_draft.md`
+- ENHANCEMENT（展开属性型） → `theory_v2_draft.md`
+- ANOMALY → `failure_conditions_draft.md`
+- 所有类型 → `reflection.md` + `HOPE_STATE.md`（若 hope_direction 非空）
+
+```bash
+python3 theory_integration_writer.py integrate <candidate-id>
+python3 theory_integration_writer.py dry-run <candidate-id>     # 预览
+python3 theory_integration_writer.py integrate-file <path.json> # 直接集成文件
+```
+
+---
+
+### 7. integrated_feedback_workflow.py [已更新 2026-06-06]
+
+**功能：** 一键完整反馈处理工作流（格式检测→分类→候选生成→希望追踪）  
+**原子写入：** 所有写操作均使用 `tempfile + os.replace` 防止写入中途损坏
+
+```bash
+python3 integrated_feedback_workflow.py <反馈文件>
+```
+
+---
+
+### 8. feedback_format_converter.py
+
+**功能：** Markdown ↔ JSON 反馈格式转换  
+**何时运行：** 在 `integrated_feedback_workflow` 中自动调用
+
+---
+
+### 9. hope_tension_collector.py ⭐ [已增强 2026-06-06]
+
+**功能：** 希望=本原张力健康扫描器（只读，🟢 层）  
+**扫描维度：** 约束侧（core 稳定性）、展开侧（reflection 活跃度）、张力比率  
+**新增：** JSONL 时序历史记录 + ↑↓→ 趋势箭头对比报告
+
+```bash
+python3 hope_tension_collector.py           # 即时扫描
+python3 hope_tension_collector.py --save    # 扫描并保存快照
+python3 hope_tension_collector.py --history # 显示最近 10 次趋势
+python3 hope_tension_collector.py --history 20  # 最近 20 次
+python3 hope_tension_collector.py --json    # 同时输出 JSON
+```
+
+---
+
+### 10. memory_metabolism.py ⭐ [2026-06-06]
+
+**功能：** runtime 记忆代谢扫描器（只读，🟢 层）  
+**扫描维度：**
+- 文件膨胀：`reflection.md`(>100KB)、`concepts_v2_draft.md`(>80KB) 等阈值告警
+- 文件失活：`current_state.md`(>14d)、`memory.md`(>30d) 等长期未更新告警
+- 结构完整性：bootstrap/index/HOPE_STATE/memory 四大结构件存在性检查
+
+```bash
+python3 memory_metabolism.py        # 人类可读报告
+python3 memory_metabolism.py --json # 同时输出 JSON
+```
+
+---
+
+### 11. analogy_finder.py ⭐ [2026-06-07]
+
+**功能：** 类比识别工具（本地，无需 API）  
+**定义：** 类比 = 对两个状态进行结构/功能比较，识别出局限性相同的过程  
+**特性：** CJK 二元组 Jaccard + 约束本体归一化（近义词映射）+ 法则属性推断（8 类路由）
+
+```bash
+python3 analogy_finder.py "梦境中法则约束松弛" "想象受可理解性约束"
+python3 analogy_finder.py --llm "描述A" "描述B"          # LLM 增强（有 Key 时）
+python3 analogy_finder.py --against-candidates "新观察"   # 与候选库比较
+python3 analogy_finder.py --verbose "描述A" "描述B"       # 显示全部约束短语
+```
+
+---
+
+### 12. llm_analogizer.py ⭐ [2026-06-07]
+
+**功能：** LLM 增强的类比与想象工具（需要 `ANTHROPIC_API_KEY`）  
+**两个子命令：**
+- `compare`：识别两段描述的局限性相同，推断法则属性
+- `imagine`：从起点出发，类相干模式下生成 N 个推演方向（维持多态共存，标注坍缩触发条件）
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+
+python3 llm_analogizer.py compare "描述A" "描述B"
+python3 llm_analogizer.py imagine "当前理论：法则属性和展开属性在本原层未分化" --n 3
+python3 llm_analogizer.py imagine "起点描述" --collapse "选择的方向"
+python3 llm_analogizer.py compare --against-candidates "新观察"
+```
+
+---
+
+## 快速上手：完整工作流示例
+
+```bash
+# 1. 任务前：生成 TTAF 检视清单
+python3 scripts/theory_application_checker.py "优化候选存储查询性能"
+
+# 2. 执行任务，完成后提交反馈
+python3 scripts/auto_feedback_submitter.py \
+    "候选存储查询优化" \
+    "SQLite 索引使查询速度提升 10x" \
+    "大数据量下全表扫描仍有瓶颈" \
+    "可考虑增加复合索引"
+
+# 3. 查看生成的候选
+python3 scripts/evolution_candidate_manager.py list-pending
+
+# 4. 批准并集成
+python3 scripts/evolution_candidate_manager.py approve <id>
+python3 scripts/evolution_candidate_manager.py integrate <id>
+
+# 5. 健康监控
+python3 scripts/hope_tension_collector.py --save
+python3 scripts/memory_metabolism.py
+```
 
 ---
 
@@ -154,30 +246,18 @@ theory_application_checker.py    →  PORF观察  →  feedback_classifier.py
 
 | 框架 | 时间 | 对应脚本 |
 |------|------|--------|
-| TTAF | 任务前 | theory_application_checker.py |
-| PORF | 任务中 | （无脚本，人工记录） |
-| FTEF | 任务后 | feedback_classifier.py |
-| 候选管理 | 候选生成→评审 | evolution_candidate_manager.py |
-| 一键流程 | 从反馈→候选 | integrated_feedback_workflow.py |
-| 希望维持 | 持续 | （HOPE_STATE.md + 脚本自动提取） |
+| TTAF | 任务前 | `theory_application_checker.py` |
+| PORF | 任务中 | （人工记录，结果传入 auto_feedback_submitter） |
+| 反馈提交 | 任务后 | `auto_feedback_submitter.py` |
+| 反馈分类 | 自动 | `feedback_classifier.py` via `integrated_feedback_workflow.py` |
+| 候选管理 | 候选生成→审批 | `evolution_candidate_manager.py` + `candidate_store.py` |
+| 候选集成 | APPROVED→INTEGRATED | `theory_integration_writer.py` |
+| 健康监控 | 持续 | `hope_tension_collector.py` + `memory_metabolism.py` |
+| 类比识别 | 随时 | `analogy_finder.py`（本地）/ `llm_analogizer.py compare`（LLM）|
+| 想象推演 | 随时 | `llm_analogizer.py imagine`（类相干多方向，需 API Key）|
 
 ---
 
-## 故障排除
-
-### 问题：运行integrated_workflow时报错"hope_tracking字段未找到"
-**检查：** PORF反馈中是否有观察5（希望追踪）  
-**解决：** 确保反馈包含完整的PORF 5个观察维度，或检查JSON中的hope_tracking字段是否存在  
-
-### 问题：candidate中的expansion_type字段为"pending"
-**正常：** 这是默认值，表示需要用户确认  
-**处理：** 在候选评审时填入具体值（法则属性型/展开属性型/混合型）  
-
-### 问题：希望追踪自动提取准确率不高
-**原因：** hope_tracking数据的结构或描述与脚本预期不符  
-**解决：** 检查PORF观察5的记录格式，参考FEEDBACK_TEMPLATE.md的示例  
-
----
-
-**最后更新：** 2026-05-29  
-**脚本成熟度：** Production-Ready（所有关键脚本已更新）
+**最后更新：** 2026-06-07  
+**测试覆盖：** 73 项（`python3 -m pytest tests/ -v`，全部通过）  
+**CI：** GitHub Actions 每次 push/PR 自动触发

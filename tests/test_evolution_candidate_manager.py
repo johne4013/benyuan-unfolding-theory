@@ -1,6 +1,5 @@
 """Tests for EvolutionCandidateManager (scripts/evolution_candidate_manager.py)."""
 
-import json
 import pytest
 from evolution_candidate_manager import EvolutionCandidateManager
 
@@ -63,16 +62,13 @@ def test_list_candidates_filters_by_status(tmp_path):
     assert candidates[0]["id"] == cand1["id"]
 
 
-def test_list_skips_corrupted_json(tmp_path):
+def test_get_stats_returns_counts(tmp_path):
     mgr = make_manager(tmp_path)
-    cand = mgr.create_candidate("ENHANCEMENT", "Enhancement 1", "Desc", "task-007")
-    mgr.save_candidate(cand)
-
-    # Write a corrupt JSON file in the same directory
-    corrupt_file = mgr.candidates_dir / "corrupt-enhancement.json"
-    corrupt_file.write_text("{invalid json", encoding="utf-8")
-
-    # list_candidates should skip the corrupt file and return the valid one
-    results = mgr.list_candidates()
-    assert len(results) == 1
-    assert results[0]["id"] == cand["id"]
+    cand1 = mgr.create_candidate("PATTERN", "P1", "Desc", "task-001")
+    cand2 = mgr.create_candidate("ANOMALY", "A1", "Desc", "task-002")
+    mgr.save_candidate(cand1)
+    mgr.save_candidate(cand2)
+    stats = mgr.get_stats()
+    assert stats["total"] == 2
+    assert stats["by_type"].get("PATTERN") == 1
+    assert stats["by_type"].get("ANOMALY") == 1

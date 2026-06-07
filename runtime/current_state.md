@@ -3,7 +3,7 @@
 当前阶段：
 第二阶段：连续性系统稳定化与自主代谢实验
 
-更新：2026-05-30
+更新：2026-06-06
 
 当前目标：
 - 维持 本原展开论 continuity 系统稳定运行；
@@ -39,7 +39,17 @@
 当前工程结构：
 
 - TTAF / PORF / FTEF / HOPE_STATE 执行框架已建立 (2026-05-29)，用于理论引导任务执行与反馈分类；
-- 5 个自动化脚本 (theory_application_checker / feedback_classifier / feedback_format_converter / evolution_candidate_manager / integrated_feedback_workflow) 位于 `scripts/`；
+- 9 个自动化脚本位于 `scripts/`（2026-06-06 补全）：
+  - `theory_application_checker.py`：TTAF 任务层级检测，自动生成 D1～D6 清单
+  - `feedback_classifier.py`：TEMPORARY/PATTERN/ANOMALY/ENHANCEMENT 分类，含跨任务 PATTERN 去重
+  - `feedback_format_converter.py`：Markdown ↔ JSON 格式转换
+  - `evolution_candidate_manager.py`：候选生命周期管理（SQLite 后端）
+  - `candidate_store.py`：SQLite 候选存储（索引查询、统计、去重）
+  - `auto_feedback_submitter.py`：编程式反馈提交，闭合反馈环路（P0.1）
+  - `theory_integration_writer.py`：APPROVED 候选写入 runtime 草案，闭合集成环路（P0.2）
+  - `integrated_feedback_workflow.py`：一键完整反馈工作流
+  - `memory_metabolism.py`：runtime 文件膨胀/失活/结构完整性只读扫描
+- `tests/`：48 项自动化测试（pytest），GitHub Actions CI 自动触发；
 - Fava 三层边界框架 (🔴/🟡/🟢) 已明确：🔴 王俊华专有，🟡 Fava 提案+王俊华批准，🟢 Fava 自主信息组织。
 
 当前禁止：
@@ -63,6 +73,6 @@
 
 当前维护焦点：
 
-- 定期健康扫描（文件大小、术语对齐、索引新鲜度）；
-- 结构性代谢（reflection 归档、draft 压缩、索引更新）；
-- 脚本功能验证与修复。
+- 定期健康扫描（`hope_tension_collector.py --save` + `memory_metabolism.py`）；
+- 实际任务走完整工具链（TTAF → 执行 → PORF → auto_feedback_submitter → theory_integration_writer）；
+- 结构性代谢（reflection 归档、draft 压缩、索引更新）。
