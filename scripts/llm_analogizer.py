@@ -5,7 +5,7 @@ LLM 增强的类比与想象工具
   - 类比：识别两个状态的局限性相同，推断法则属性
   - 想象：从起点出发在类相干模式下生成多可能性推演，维持多态共存
 
-输出格式与 analogy_finder.py 兼容，可无缝接入现有候选管理流程。
+输出可无缝接入现有候选管理流程。
 需要环境变量 ANTHROPIC_API_KEY。
 """
 
@@ -199,26 +199,19 @@ def compare_against_candidates(
     db_path: str = None,
 ) -> List[Dict]:
     """
-    将给定文本与候选库中所有候选进行 LLM 类比比较。
-
-    为降低 API 调用成本，先用本地词汇匹配粗筛 top_n×3 个候选，
-    再对粗筛结果做精确 LLM 比较。
+    将给定文本与候选库中所有候选进行 LLM 类比比较，返回相似度最高的 top_n 个。
     """
     sys.path.insert(0, str(Path(__file__).parent))
-    from analogy_finder import compare_against_candidates as local_compare
     from candidate_store import CandidateStore
 
-    # 粗筛：本地词汇匹配，取 top_n×3
-    coarse = local_compare(text, db_path=db_path, top_n=top_n * 3)
-    if not coarse:
+    store = CandidateStore(db_path=db_path)
+    all_candidates = store.query()
+    if not all_candidates:
         return []
 
     results = []
-    for item in coarse[:top_n * 3]:
-        store = CandidateStore(db_path=db_path)
-        cand = store.load(item['candidate_id'])
+    for cand in all_candidates:
         cand_text = f"{cand.get('title', '')}。{cand.get('description', '')}。{cand.get('improvement_direction', '')}"
-
         try:
             llm_result = compare(text, cand_text, model=model)
             results.append({
@@ -232,11 +225,8 @@ def compare_against_candidates(
                 'reasoning': llm_result.get('reasoning', ''),
                 'source': 'llm',
             })
-        except Exception as e:
-            # 单个候选失败时保留粗筛结果
-            item['source'] = 'local_fallback'
-            item['error'] = str(e)
-            results.append(item)
+        except Exception:
+            pass
 
     results.sort(key=lambda x: x.get('constraint_similarity', 0), reverse=True)
     return results[:top_n]
@@ -349,12 +339,11 @@ if __name__ == '__main__':
             if args.output_json:
                 print(json.dumps(results, ensure_ascii=False, indent=2))
             else:
-                sys.path.insert(0, str(Path(__file__).parent))
-                from analogy_finder import format_candidates_result
-                print(format_candidates_result(results))
                 for r in results:
+                    sim = r.get('constraint_similarity', 0)
+                    print(f"  {sim:.3f}  {r.get('cognitive_level', '')}  [{r['candidate_id'][:24]}] {r['title'][:40]}")
                     if r.get('reasoning'):
-                        print(f"  [{r['candidate_id'][:20]}] 推理：{r['reasoning']}")
+                        print(f"    推理：{r['reasoning']}")
 
         elif len(args.texts) >= 2:
             result = compare(args.texts[0], args.texts[1], model=args.model)

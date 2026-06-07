@@ -40,7 +40,7 @@
 当前工程结构：
 
 - TTAF / PORF / FTEF / HOPE_STATE 执行框架已建立 (2026-05-29)，用于理论引导任务执行与反馈分类；
-- 12 个自动化脚本位于 `scripts/`（2026-06-07 扩展，含类比/想象引擎）：
+- 11 个自动化脚本位于 `scripts/`（2026-06-07 扩展，含 LLM 类比/想象引擎）：
   - `theory_application_checker.py`：TTAF 任务层级检测，自动生成 D1～D6 清单
   - `feedback_classifier.py`：TEMPORARY/PATTERN/ANOMALY/ENHANCEMENT 分类，含跨任务 PATTERN 去重
   - `feedback_format_converter.py`：Markdown ↔ JSON 格式转换
@@ -50,8 +50,7 @@
   - `theory_integration_writer.py`：APPROVED 候选写入 runtime 草案，闭合集成环路（P0.2）
   - `integrated_feedback_workflow.py`：一键完整反馈工作流
   - `memory_metabolism.py`：runtime 文件膨胀/失活/结构完整性只读扫描
-  - `analogy_finder.py`：本地类比识别（CJK bigram Jaccard + CONSTRAINT_ONTOLOGY）
-  - `llm_analogizer.py`：LLM增强类比与想象推演（Claude Haiku API，含fallback）
+  - `llm_analogizer.py`：LLM 类比与想象推演（Claude Haiku API）
   - `hope_tension_collector.py`：希望张力事件收集
 - `tests/`：73 项自动化测试（pytest），GitHub Actions CI 自动触发；
 - Fava 三层边界框架 (🔴/🟡/🟢) 已明确：🔴 王俊华专有，🟡 Fava 提案+王俊华批准，🟢 Fava 自主信息组织。
