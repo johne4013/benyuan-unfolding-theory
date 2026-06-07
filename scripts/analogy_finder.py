@@ -388,13 +388,35 @@ if __name__ == '__main__':
     parser.add_argument('--threshold', type=float, default=0.10, help='类比判定阈值（默认 0.10）')
     parser.add_argument('--verbose', action='store_true', help='显示全部提取的约束短语')
     parser.add_argument('--json', action='store_true', dest='output_json', help='输出 JSON 格式')
+    parser.add_argument('--llm', action='store_true',
+                        help='使用 LLM 增强（需要 ANTHROPIC_API_KEY；失败时自动回退到本地词汇匹配）')
 
     args = parser.parse_args()
 
     sys.path.insert(0, str(Path(__file__).parent))
 
+    def _do_compare(text_a, text_b):
+        if args.llm:
+            try:
+                from llm_analogizer import compare as llm_compare
+                result = llm_compare(text_a, text_b)
+                result['_mode'] = 'llm'
+                return result
+            except Exception as e:
+                print(f"[警告] LLM 调用失败（{e}），回退到本地词汇匹配", file=sys.stderr)
+        return compare(text_a, text_b, threshold=args.threshold)
+
     if args.against_candidates:
-        results = compare_against_candidates(args.against_candidates, top_n=args.top)
+        if args.llm:
+            try:
+                from llm_analogizer import compare_against_candidates as llm_cac
+                results = llm_cac(args.against_candidates, top_n=args.top)
+            except Exception as e:
+                print(f"[警告] LLM 调用失败（{e}），回退到本地词汇匹配", file=sys.stderr)
+                results = compare_against_candidates(args.against_candidates, top_n=args.top)
+        else:
+            results = compare_against_candidates(args.against_candidates, top_n=args.top)
+
         if args.output_json:
             print(json.dumps(results, ensure_ascii=False, indent=2))
         else:
@@ -402,19 +424,23 @@ if __name__ == '__main__':
 
     elif len(args.texts) >= 2:
         text_a, text_b = args.texts[0], args.texts[1]
-        result = compare(text_a, text_b, threshold=args.threshold)
+        result = _do_compare(text_a, text_b)
 
         if args.output_json:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         else:
-            print(format_result(result, label_a='A', label_b='B'))
-            if args.verbose:
-                print('\n── A 的全部约束 ──')
-                for c in result['constraints_a']:
-                    print(f"  [{c['weight']:.1f}] {c['phrase'][:70]}")
-                print('\n── B 的全部约束 ──')
-                for c in result['constraints_b']:
-                    print(f"  [{c['weight']:.1f}] {c['phrase'][:70]}")
+            if result.get('_mode') == 'llm':
+                from llm_analogizer import format_compare_result
+                print(format_compare_result(result))
+            else:
+                print(format_result(result, label_a='A', label_b='B'))
+                if args.verbose:
+                    print('\n── A 的全部约束 ──')
+                    for c in result['constraints_a']:
+                        print(f"  [{c['weight']:.1f}] {c['phrase'][:70]}")
+                    print('\n── B 的全部约束 ──')
+                    for c in result['constraints_b']:
+                        print(f"  [{c['weight']:.1f}] {c['phrase'][:70]}")
 
     else:
         parser.print_help()
