@@ -3,7 +3,7 @@
 当前阶段：
 第二阶段：连续性系统稳定化与自主代谢实验
 
-更新：2026-06-06
+更新：2026-06-07
 
 当前目标：
 - 维持 本原展开论 continuity 系统稳定运行；
@@ -31,7 +31,8 @@
 
 - 本原统一态 / 本原存在是前时空、前分化、前对象化的本原候选；"质点存在"为旧称仅作历史检索入口；
 - 时空不是预设容器，而是法则展开的结果 / 显示；
-- 法则属性与展开属性采用 C 方案：在本原层未分化地统一，在法则展开中显现为结构约束与生成面向；
+- 法则属性与展开属性采用 C 方案：在本原层未分化地统一，在法则展开中显现为结构约束与生成面向；  
+  **[2026-06-07 C方案验证]** 识别出循环依赖缺陷（法则展开定义预设了两者区分），提出「分析性回溯」框架化解：法则属性/展开属性是从显现层回溯的分析范畴，而非本原层已有的区分；
 - 希望不是乐观，而是主体在局限中仍开放于更高可能性的能力；
 - 本原展开论当前优先作为实践方法论，不是默认的"万物解释器"；
 - 理论本身也具有连续性和局限性，必须持续拟合现实、保留 unknown、避免封闭化。
@@ -39,7 +40,7 @@
 当前工程结构：
 
 - TTAF / PORF / FTEF / HOPE_STATE 执行框架已建立 (2026-05-29)，用于理论引导任务执行与反馈分类；
-- 9 个自动化脚本位于 `scripts/`（2026-06-06 补全）：
+- 11 个自动化脚本位于 `scripts/`（2026-06-07 扩展，含 LLM 类比/想象引擎）：
   - `theory_application_checker.py`：TTAF 任务层级检测，自动生成 D1～D6 清单
   - `feedback_classifier.py`：TEMPORARY/PATTERN/ANOMALY/ENHANCEMENT 分类，含跨任务 PATTERN 去重
   - `feedback_format_converter.py`：Markdown ↔ JSON 格式转换
@@ -49,7 +50,9 @@
   - `theory_integration_writer.py`：APPROVED 候选写入 runtime 草案，闭合集成环路（P0.2）
   - `integrated_feedback_workflow.py`：一键完整反馈工作流
   - `memory_metabolism.py`：runtime 文件膨胀/失活/结构完整性只读扫描
-- `tests/`：48 项自动化测试（pytest），GitHub Actions CI 自动触发；
+  - `llm_analogizer.py`：LLM 类比与想象推演（Claude Haiku API）
+  - `hope_tension_collector.py`：希望张力事件收集
+- `tests/`：73 项自动化测试（pytest），GitHub Actions CI 自动触发；
 - Fava 三层边界框架 (🔴/🟡/🟢) 已明确：🔴 王俊华专有，🟡 Fava 提案+王俊华批准，🟢 Fava 自主信息组织。
 
 当前禁止：
