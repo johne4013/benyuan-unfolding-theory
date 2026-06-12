@@ -103,7 +103,8 @@
   }
   .sheet hr.rule { border: none; border-top: 2px solid #333; margin: 6px 0 12px; }
   .pt-info {
-    width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13px;
+    width: calc(100% - 2px); border-collapse: collapse; margin-bottom: 12px; font-size: 13px;
+    border: 1.5px solid #555;
   }
   .pt-info td { border: 1px solid #999; padding: 4px 8px; }
   .pt-info td.k { background: #f3f5f7; width: 72px; white-space: nowrap; text-align: center; }
@@ -120,7 +121,8 @@
   }
   .redflag-box h3 { border-left-color: var(--danger); color: var(--danger); margin-top: 0; }
   table.meds {
-    width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 4px 0 8px;
+    width: calc(100% - 2px); border-collapse: collapse; font-size: 12.5px; margin: 4px 0 8px;
+    border: 1.5px solid #555;
   }
   table.meds th, table.meds td { border: 1px solid #999; padding: 4px 6px; text-align: center; }
   table.meds th { background: #f3f5f7; }
@@ -131,11 +133,22 @@
   .disclaimer { font-size: 12px; color: #666; margin-top: 18px; border-top: 1px dashed #aaa; padding-top: 6px; }
   .empty-tip { color: #aaa; text-align: center; padding: 60px 0; }
 
+  /* 预览可编辑提示与条目删除按钮 */
+  .edit-hint { font-size: 12px; color: #777; margin: 0 0 8px; }
+  .sheet[contenteditable="true"]:focus { outline: 2px dashed #b8d4ec; outline-offset: 2px; }
+  .sheet li { position: relative; }
+  .li-del {
+    display: none; position: absolute; left: -19px; top: 1px;
+    color: var(--danger); font-weight: 700; cursor: pointer;
+    user-select: none; line-height: 1.4;
+  }
+  .sheet li:hover .li-del { display: inline; }
+
   /* ===== 打印 ===== */
   @media print {
     @page { size: A4; margin: 12mm; }
     body { background: #fff; }
-    .toolbar, .form-panel { display: none !important; }
+    .toolbar, .form-panel, .edit-hint, .li-del { display: none !important; }
     .layout { display: block; padding: 0; }
     .sheet {
       width: auto; min-height: 0; box-shadow: none;
@@ -214,6 +227,8 @@
 
   <!-- ================= 右侧 A4 预览区 ================= -->
   <div class="preview-panel">
+    <p class="edit-hint">💡 生成后可直接点击预览文字进行修改；鼠标移到条目上，点其左侧红色 ×
+      可删除该条。重新点击「生成 / 刷新告知单」将按左侧表单重新生成（会提示是否覆盖手动修改）。</p>
     <div class="sheet" id="sheet">
       <p class="empty-tip">填写左侧信息后，点击顶部「生成 / 刷新告知单」查看预览</p>
     </div>
@@ -540,9 +555,17 @@ function getMeds() {
 
 const checked = prefix => [...document.querySelectorAll(`[id^="${prefix}_"]:checked`)].map(c => c.value);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const ul = items => `<ul>${items.map(i => `<li>${i}</li>`).join("")}</ul>`;
+const ul = items => `<ul>${items.map(i =>
+  `<li>${i}<span class="li-del" contenteditable="false" title="删除此条" onclick="this.parentNode.remove();markEdited()">×</span></li>`
+).join("")}</ul>`;
+
+/* 预览手动编辑状态 */
+let sheetGenerated = false, sheetEdited = false;
+function markEdited() { sheetEdited = true; }
 
 function render() {
+  if (sheetGenerated && sheetEdited &&
+      !confirm("预览内容已手动修改，重新生成将覆盖这些修改，是否继续？")) return;
   saveDraft();
   const dz = checked("dz"), op = checked("op"), meds = getMeds();
   const v = id => esc($(id).value.trim());
@@ -604,12 +627,18 @@ function render() {
     <p class="disclaimer">说明：本告知书为出院健康指导的一般性建议，具体诊疗及用药请以主管医师医嘱为准；
     病情变化时请及时就诊。患者/家属签名表示已知晓上述内容。</p>`;
 
-  $("sheet").innerHTML = html;
+  const sheet = $("sheet");
+  sheet.innerHTML = html;
+  sheet.contentEditable = "true";   // 允许在预览上直接修改文字
+  sheetGenerated = true;
+  sheetEdited = false;
 }
 
-function doPrint() { render(); window.print(); }
+/* 已生成过则保留手动修改，直接打印；未生成则先生成 */
+function ensureRendered() { if (!sheetGenerated) render(); }
+function doPrint() { ensureRendered(); window.print(); }
 function doPdf() {
-  render();
+  ensureRendered();
   alert("即将打开打印对话框：\n在「目标打印机 / 打印机」中选择「另存为 PDF」即可生成 PDF 文件。");
   window.print();
 }
@@ -640,6 +669,7 @@ function clearAll() {
 }
 
 document.getElementById("formPanel").addEventListener("change", saveDraft);
+document.getElementById("sheet").addEventListener("input", markEdited);
 loadDraft();
 if (!document.querySelector("#medRows .med-row")) addMedRow();
 </script>
