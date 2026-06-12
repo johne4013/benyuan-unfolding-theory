@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>心脏外科入院记录生成系统</title>
+<style>
+  :root {
+    --primary: #1e6fb8;
+    --primary-dark: #15528a;
+    --bg: #eef2f6;
+    --border: #d4dce4;
+    --danger: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    background: var(--bg);
+    color: #2c3e50;
+    font-size: 14px;
+  }
+  .toolbar {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--primary); color: #fff;
+    padding: 10px 20px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .toolbar h1 { font-size: 17px; margin: 0 auto 0 0; font-weight: 600; }
+  .toolbar button {
+    border: none; border-radius: 4px; padding: 8px 18px;
+    font-size: 14px; cursor: pointer; background: #fff; color: var(--primary-dark);
+    font-weight: 600;
+  }
+  .toolbar button:hover { background: #e8f1fa; }
+  .toolbar button.danger { background: transparent; color: #ffd9d3; border: 1px solid #ffd9d3; }
+
+  .layout {
+    display: flex; gap: 16px; padding: 16px;
+    max-width: 1560px; margin: 0 auto; align-items: flex-start;
+  }
+  .form-panel { flex: 0 0 500px; }
+  .preview-panel { flex: 1; min-width: 0; }
+
+  fieldset {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    margin: 0 0 14px; padding: 12px 16px 16px;
+  }
+  legend { font-weight: 700; color: var(--primary-dark); padding: 0 8px; font-size: 15px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 12px; }
+  label.field { display: block; font-size: 13px; color: #555; }
+  label.field input, label.field select, label.field textarea {
+    width: 100%; margin-top: 3px; padding: 6px 8px;
+    border: 1px solid var(--border); border-radius: 4px; font-size: 14px;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; line-height: 1.5; }
+  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .checks label {
+    display: flex; align-items: center; gap: 6px; padding: 5px 8px;
+    border: 1px solid var(--border); border-radius: 4px; cursor: pointer; user-select: none;
+  }
+  .checks label:has(input:checked) { background: #e8f1fa; border-color: var(--primary); }
+  .hint { font-size: 12px; color: #888; margin: 4px 0 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 6px; }
+  .chips button {
+    border: 1px solid var(--primary); background: #f4f9fe; color: var(--primary-dark);
+    border-radius: 12px; padding: 3px 11px; font-size: 12.5px; cursor: pointer;
+  }
+  .chips button:hover { background: #e0eefb; }
+  .exam-row { margin-bottom: 8px; }
+  .exam-row > span { font-size: 13px; color: #555; font-weight: 600; }
+  .exam-row textarea { width: 100%; margin-top: 3px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; font-family: inherit; }
+  .cc-count { font-size: 12px; color: #888; }
+  .cc-count.warn { color: var(--danger); }
+  .sub-actions { margin-top: 4px; }
+  .sub-actions button {
+    padding: 5px 12px; border: 1px dashed var(--primary); background: #f4f9fe;
+    color: var(--primary-dark); border-radius: 4px; cursor: pointer; font-size: 12.5px;
+  }
+
+  /* A4 预览 */
+  .sheet {
+    background: #fff; width: 210mm; max-width: 100%; min-height: 297mm;
+    margin: 0 auto; padding: 16mm 18mm; box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    font-size: 13.5px; line-height: 1.75;
+  }
+  .sheet h2.doc-title { text-align: center; font-size: 21px; margin: 0 0 4px; letter-spacing: 3px; }
+  .sheet .hospital { text-align: center; font-size: 15px; color: #444; margin-bottom: 4px; }
+  .sheet hr.rule { border: none; border-top: 2px solid #333; margin: 6px 0 12px; }
+  .rec p { margin: 4px 0; text-align: justify; }
+  .rec .item-label { font-weight: 700; }
+  .rec .gen-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 16px; margin: 4px 0 10px;
+  }
+  .rec .exam-line { margin: 2px 0; }
+  .rec .dx-list { margin: 2px 0 0; padding-left: 30px; }
+  .rec .dx-list li { margin: 1px 0; }
+  .sign-area { margin-top: 26px; text-align: right; page-break-inside: avoid; line-height: 2; }
+  .disclaimer { font-size: 12px; color: #666; margin-top: 18px; border-top: 1px dashed #aaa; padding-top: 6px; }
+  .empty-tip { color: #aaa; text-align: center; padding: 60px 0; }
+  .edit-hint { font-size: 12px; color: #777; margin: 0 0 8px; }
+  .sheet[contenteditable="true"]:focus { outline: 2px dashed #b8d4ec; outline-offset: 2px; }
+
+  @media print {
+    @page { size: A4; margin: 14mm; }
+    body { background: #fff; }
+    .toolbar, .form-panel, .edit-hint { display: none !important; }
+    .layout { display: block; padding: 0; }
+    .sheet { width: auto; min-height: 0; box-shadow: none; padding: 0; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>汉中市中心医院 心脏外科 · 入院记录生成系统</h1>
+  <button onclick="render()">生成 / 刷新入院记录</button>
+  <button onclick="doPrint()">打印</button>
+  <button onclick="doPdf()">生成 PDF</button>
+  <button class="danger" onclick="clearAll()">清空重填</button>
+</div>
+
+<div class="layout">
+  <div class="form-panel" id="formPanel">
+
+    <fieldset>
+      <legend>① 一般项目</legend>
+      <div class="grid3">
+        <label class="field">姓名 <input id="g_name"></label>
+        <label class="field">性别
+          <select id="g_sex" onchange="toggleMenses()"><option value=""></option><option>男</option><option>女</option></select>
+        </label>
+        <label class="field">年龄 <input id="g_age" placeholder="岁"></label>
+        <label class="field">民族 <input id="g_nation" value="汉族"></label>
+        <label class="field">婚姻 <input id="g_marriage" value="已婚"></label>
+        <label class="field">职业 <input id="g_job"></label>
+        <label class="field">籍贯 <input id="g_origin"></label>
+        <label class="field">住院号 <input id="g_id"></label>
+        <label class="field">病史陈述者 <input id="g_teller" value="患者本人"></label>
+        <label class="field">现住址 <input id="g_addr"></label>
+        <label class="field">入院时间 <input id="g_admit" type="datetime-local"></label>
+        <label class="field">记录时间 <input id="g_record" type="datetime-local"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>② 主诉</legend>
+      <p class="hint">规范要求：用症状不用诊断，简明＜20字。点症状快速插入，填写持续时间后自动成句。</p>
+      <div class="chips" id="ccChips"></div>
+      <div class="grid2">
+        <label class="field">主要症状 <input id="cc_symptom" placeholder="如：活动后胸闷、气促"></label>
+        <label class="field">持续时间 <input id="cc_duration" placeholder="如：3年，加重1周"></label>
+      </div>
+      <label class="field" style="margin-top:6px;">主诉（自动生成，可改）
+        <input id="cc_text" oninput="ccCount();markEdited()">
+      </label>
+      <span class="cc-count" id="ccCount">0 字</span>
+    </fieldset>
+
+    <fieldset>
+      <legend>③ 现病史</legend>
+      <div class="sub-actions"><button onclick="genHPI()">⟳ 按主诉生成现病史模板</button></div>
+      <p class="hint">先生成骨架，再在下框补充症状特点、伴随症状、院外诊疗经过及一般情况。</p>
+      <div class="chips" id="hpiChips"></div>
+      <textarea id="hpi" rows="7" placeholder="患者于……前无明显诱因出现……"></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>④ 既往史</legend>
+      <p class="hint">勾选既往基础疾病，自动并入既往史；其余项给出默认表述，按需修改。</p>
+      <div class="checks" id="pastChecks"></div>
+      <div style="margin-top:8px;">
+        <label class="field">手术外伤史 <input id="p_surg" value="否认重大手术、外伤史"></label>
+        <label class="field" style="margin-top:6px;">过敏史 <input id="p_allergy" value="否认药物及食物过敏史"></label>
+        <label class="field" style="margin-top:6px;">传染病/输血史 <input id="p_infect" value="否认肝炎、结核等传染病史，否认输血史"></label>
+        <label class="field" style="margin-top:6px;">补充说明 <input id="p_extra" placeholder="预防接种史随当地、其他补充…"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>⑤ 个人史 / 婚育史 / 家族史</legend>
+      <div class="grid2">
+        <label class="field">吸烟
+          <select id="ps_smoke"><option value="">无</option><option value="y">有</option></select>
+        </label>
+        <label class="field">吸烟量 <input id="ps_smoke_n" placeholder="如：20支/日×20年"></label>
+        <label class="field">饮酒
+          <select id="ps_drink"><option value="">无</option><option value="y">有</option></select>
+        </label>
+        <label class="field">饮酒量 <input id="ps_drink_n" placeholder="如：250ml/日×10年"></label>
+      </div>
+      <label class="field" style="margin-top:6px;">个人史（默认，可改）
+        <input id="ps_text" value="生于原籍，无疫水疫区及放射性物质接触史，无特殊不良嗜好。">
+      </label>
+      <label class="field" style="margin-top:6px;">婚育史 <input id="ps_marry" value="适龄结婚，配偶及子女体健。"></label>
+      <label class="field" style="margin-top:6px;">家族史 <input id="ps_family" value="否认家族遗传病及类似疾病史。"></label>
+      <div id="mensesBox" style="display:none;margin-top:6px;">
+        <label class="field">月经史 <input id="ps_menses" value="月经规律，无痛经，已婚已育。"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>⑥ 体格检查（默认正常，只改异常）</legend>
+      <div class="grid3" style="margin-bottom:8px;">
+        <label class="field">T(℃) <input id="v_t" value="36.5"></label>
+        <label class="field">P(次/分) <input id="v_p" value="78"></label>
+        <label class="field">R(次/分) <input id="v_r" value="18"></label>
+        <label class="field">BP(mmHg) <input id="v_bp" placeholder="120/75"></label>
+        <label class="field">身高(cm) <input id="v_h"></label>
+        <label class="field">体重(kg) <input id="v_w"></label>
+      </div>
+      <div id="examRows"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>⑦ 辅助检查</legend>
+      <textarea id="aux" rows="4" placeholder="心电图：……&#10;心脏彩超：……&#10;胸部CT/X线：……&#10;实验室检查：……"></textarea>
+    </fieldset>
+
+    <fieldset>
+      <legend>⑧ 初步诊断</legend>
+      <p class="hint">勾选诊断（复用心外科分类），自动按序号列出；可在下方追加自定义诊断行。</p>
+      <div class="checks" id="dxChecks"></div>
+      <label class="field" style="margin-top:8px;">其他诊断（每行一个）
+        <textarea id="dx_extra" rows="2" placeholder="如：心功能Ⅱ级(NYHA)"></textarea>
+      </label>
+      <label class="field" style="margin-top:6px;">记录医师 <input id="doctor"></label>
+    </fieldset>
+  </div>
+
+  <div class="preview-panel">
+    <p class="edit-hint">💡 生成后可直接点击预览文字修改；重新点「生成 / 刷新入院记录」会按左侧表单重新生成（提示是否覆盖手动修改）。本文档为辅助生成草稿，须经经治医师审核修改并签字方为正式病历。</p>
+    <div class="sheet" id="sheet">
+      <p class="empty-tip">填写左侧信息后，点击顶部「生成 / 刷新入院记录」查看预览</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   知识库（KB）：科室维护人员仅需修改本区
+   ⚠ 模板内容须经科室审定；本工具仅生成草稿，须经医师审核签字
+===================================================================== */
+
+/* 常见心外科主诉症状（点选插入） */
+const CC_SYMPTOMS = ["胸痛","胸闷","活动后胸闷气促","心悸","气促","呼吸困难",
+  "双下肢水肿","晕厥","发热","咳嗽、咳痰","咯血","乏力","发绀","纳差"];
+
+/* 现病史可点选补充片段 */
+const HPI_CHIPS = ["伴心悸","伴气促","伴双下肢水肿","伴夜间阵发性呼吸困难","伴胸痛",
+  "无发热","曾就诊于外院","行心电图检查","行心脏彩超检查","予以药物治疗后症状缓解",
+  "症状反复发作","为进一步诊治","门诊以“……”收入我科",
+  "发病以来精神、饮食、睡眠可，大小便正常，体重无明显变化"];
+
+/* 既往基础疾病（复用出院系统分类，自动成句） */
+const PAST_DISEASES = {
+  ht:     { label: "高血压",         sentence: "既往有高血压病史，最高血压____mmHg，平素____（药物）控制" },
+  cad:    { label: "冠心病",         sentence: "既往有冠心病病史" },
+  dm:     { label: "糖尿病",         sentence: "既往有2型糖尿病病史，平素____控制" },
+  af:     { label: "心房颤动",       sentence: "既往有心房颤动病史" },
+  ie:     { label: "感染性心内膜炎", sentence: "既往有感染性心内膜炎病史" },
+  rhd:    { label: "风湿热/风心病",  sentence: "既往有风湿热/风湿性心脏病病史" },
+  lipid:  { label: "高脂血症",       sentence: "既往有高脂血症病史" },
+  ckd:    { label: "慢性肾功能不全", sentence: "既往有慢性肾功能不全病史" },
+  copd:   { label: "慢阻肺",         sentence: "既往有慢性阻塞性肺疾病病史" },
+  stroke: { label: "脑卒中",         sentence: "既往有脑卒中病史" }
+};
+
+/* 体格检查默认正常值（医生只改异常项） */
+const EXAM = [
+  { key: "general", label: "一般情况", def: "发育正常，营养中等，神志清楚，自主体位，查体合作。" },
+  { key: "skin",    label: "皮肤黏膜", def: "皮肤黏膜无黄染、皮疹及出血点，无肝掌及蜘蛛痣。" },
+  { key: "lymph",   label: "浅表淋巴结", def: "全身浅表淋巴结未触及肿大。" },
+  { key: "headneck",label: "头颈部", def: "头颅无畸形，双侧瞳孔等大等圆、对光反射灵敏，巩膜无黄染，口唇无发绀，咽部无充血。颈软无抵抗，颈静脉无怒张，气管居中，甲状腺无肿大，颈部血管未闻及杂音。" },
+  { key: "lung",    label: "胸部（肺）", def: "胸廓对称无畸形，双肺呼吸音清，未闻及干湿性啰音及胸膜摩擦音。" },
+  { key: "heart",   label: "心脏（专科）", def: "心前区无异常隆起，心尖搏动位于第五肋间左锁骨中线内侧0.5cm处，未触及震颤，叩诊心界不大，心率__次/分，律齐，各瓣膜听诊区未闻及病理性杂音。" },
+  { key: "abdomen", label: "腹部", def: "腹平软，全腹无压痛及反跳痛，肝脾肋下未触及，移动性浊音阴性，肠鸣音正常。" },
+  { key: "spine",   label: "脊柱四肢", def: "脊柱生理弯曲存在，四肢活动自如，双下肢无水肿，无杵状指（趾）。" },
+  { key: "vessel",  label: "外周血管", def: "双侧桡动脉、足背动脉搏动正常对称，无水冲脉、枪击音及毛细血管搏动征。" },
+  { key: "nerve",   label: "神经系统", def: "生理反射存在，病理反射未引出。" }
+];
+
+/* 初步诊断（心外科分类，勾选自动列出） */
+const DIAGNOSES = {
+  cad:    "冠状动脉粥样硬化性心脏病",
+  vhd:    "心脏瓣膜病",
+  rhd:    "风湿性心脏病",
+  chd:    "先天性心脏病",
+  aad:    "主动脉夹层",
+  aneurysm:"主动脉瘤",
+  tumor:  "心脏肿瘤",
+  pericard:"心包积液",
+  ie:     "感染性心内膜炎",
+  arrhythmia:"心律失常",
+  hf:     "心功能不全"
+};
+
+/* =====================================================================
+   页面逻辑
+===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+
+/* 构建勾选项 */
+function buildChecks(containerId, dict, prefix, getLabel) {
+  $(containerId).innerHTML = Object.entries(dict).map(([k, v]) =>
+    `<label><input type="checkbox" id="${prefix}_${k}"> ${getLabel(v)}</label>`
+  ).join("");
+}
+buildChecks("pastChecks", PAST_DISEASES, "pd", v => v.label);
+buildChecks("dxChecks", DIAGNOSES, "dx", v => v);
+const checkedKeys = (dict, prefix) => Object.keys(dict).filter(k => $(`${prefix}_${k}`)?.checked);
+
+/* 主诉症状 chips */
+$("ccChips").innerHTML = CC_SYMPTOMS.map(s => `<button type="button" onclick="addSymptom('${s}')">${s}</button>`).join("");
+function addSymptom(s) {
+  const f = $("cc_symptom");
+  f.value = f.value ? f.value + "、" + s : s;
+  composeCC();
+}
+function composeCC() {
+  const sym = $("cc_symptom").value.trim(), dur = $("cc_duration").value.trim();
+  if (sym || dur) $("cc_text").value = sym + (dur ? "" + dur : "");
+  ccCount(); markEdited();
+}
+$("cc_symptom").addEventListener("input", composeCC);
+$("cc_duration").addEventListener("input", composeCC);
+function ccCount() {
+  const n = $("cc_text").value.length;
+  const el = $("ccCount");
+  el.textContent = n + " 字" + (n > 20 ? "（建议≤20字）" : "");
+  el.className = "cc-count" + (n > 20 ? " warn" : "");
+}
+
+/* 现病史 chips + 模板生成 */
+$("hpiChips").innerHTML = HPI_CHIPS.map(s => `<button type="button" onclick="insertHPI('${s}')">${s}</button>`).join("");
+function insertHPI(s) {
+  const t = $("hpi");
+  t.value = (t.value.trim() ? t.value.trim().replace(/[。，]?$/, "，") : "") + s;
+  markEdited();
+}
+function genHPI() {
+  const sym = $("cc_symptom").value.trim() || "上述症状";
+  const dur = $("cc_duration").value.trim() || "____";
+  $("hpi").value =
+    `患者于${dur}前无明显诱因出现${sym}，` +
+    `性质____，持续____后____，曾就诊于____，行____等检查，诊断为____，予以____治疗，症状____。` +
+    `此后上述症状____。本次为进一步诊治，门诊以“____”收入我科。` +
+    `发病以来神志清，精神、饮食、睡眠可，大小便正常，体重无明显变化。`;
+  markEdited();
+}
+
+/* 体格检查行（默认正常） */
+$("examRows").innerHTML = EXAM.map(e =>
+  `<div class="exam-row"><span>${e.label}</span>
+   <textarea id="ex_${e.key}" rows="2">${e.def}</textarea></div>`
+).join("");
+
+/* 月经史性别联动 */
+function toggleMenses() {
+  $("mensesBox").style.display = $("g_sex").value === "女" ? "block" : "none";
+}
+
+/* 默认记录时间=现在 */
+(function initTime() {
+  const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  $("g_record").value = now.toISOString().slice(0, 16);
+})();
+
+/* 组装既往史段落 */
+function buildPastHistory() {
+  const parts = [];
+  const dz = checkedKeys(PAST_DISEASES, "pd").map(k => PAST_DISEASES[k].sentence);
+  parts.push(dz.length ? dz.join("；") + "。" : "既往体健，否认高血压、冠心病、糖尿病等慢性病史。");
+  ["p_surg","p_allergy","p_infect","p_extra"].forEach(id => {
+    const v = $(id).value.trim(); if (v) parts.push(v.replace(/[。]?$/, "。"));
+  });
+  return parts.join("");
+}
+
+/* 组装个人史 */
+function buildPersonal() {
+  let s = $("ps_text").value.trim();
+  const smoke = $("ps_smoke").value === "y"
+    ? `吸烟史${$("ps_smoke_n").value.trim() || "（量未述）"}；` : "无吸烟史；";
+  const drink = $("ps_drink").value === "y"
+    ? `饮酒史${$("ps_drink_n").value.trim() || "（量未述）"}。` : "无饮酒史。";
+  return s.replace(/[。]?$/, "。") + smoke + drink;
+}
+
+const fmtTime = v => v ? v.replace("T", " ") : "";
+
+let sheetGenerated = false, sheetEdited = false;
+function markEdited() { sheetEdited = true; }
+
+function render() {
+  if (sheetGenerated && sheetEdited &&
+      !confirm("预览内容已手动修改，重新生成将覆盖这些修改，是否继续？")) return;
+  saveDraft();
+  const v = id => esc($(id).value.trim());
+  const sex = $("g_sex").value;
+
+  /* 一般项目 */
+  const gen = [
+    ["姓名", v("g_name")], ["性别", v("g_sex")], ["年龄", v("g_age") + (v("g_age") ? "岁" : "")],
+    ["民族", v("g_nation")], ["婚姻", v("g_marriage")], ["职业", v("g_job")],
+    ["籍贯", v("g_origin")], ["住院号", v("g_id")], ["病史陈述者", v("g_teller")],
+    ["入院时间", esc(fmtTime($("g_admit").value))], ["记录时间", esc(fmtTime($("g_record").value))]
+  ].map(([k, val]) => `<div><span class="item-label">${k}：</span>${val || "　"}</div>`).join("");
+
+  let html = `
+    <div class="hospital">汉中市中心医院　心脏外科</div>
+    <h2 class="doc-title">入　院　记　录</h2>
+    <hr class="rule">
+    <div class="rec">
+      <div class="gen-grid">${gen}</div>
+      <div style="margin-bottom:8px;"><span class="item-label">现住址：</span>${v("g_addr") || "　"}</div>`;
+
+  const para = (label, text) =>
+    `<p><span class="item-label">${label}　</span>${text}</p>`;
+
+  html += para("主诉", v("cc_text"));
+  html += para("现病史", esc($("hpi").value.trim()).replace(/\n/g, "<br>"));
+  html += para("既往史", esc(buildPastHistory()));
+  html += para("个人史", esc(buildPersonal()));
+  html += para("婚育史", v("ps_marry"));
+  if (sex === "女") html += para("月经史", v("ps_menses"));
+  html += para("家族史", v("ps_family"));
+
+  /* 体格检查 */
+  const vitals = `T ${v("v_t")||"__"}℃　P ${v("v_p")||"__"}次/分　R ${v("v_r")||"__"}次/分　BP ${v("v_bp")||"__/__"}mmHg`
+    + (v("v_h") || v("v_w") ? `　身高 ${v("v_h")||"__"}cm　体重 ${v("v_w")||"__"}kg` : "");
+  let exam = `<p><span class="item-label">体格检查　</span>${vitals}</p>`;
+  EXAM.forEach(e => {
+    exam += `<div class="exam-line">${e.label}：${esc($("ex_" + e.key).value.trim())}</div>`;
+  });
+  html += exam;
+
+  const aux = $("aux").value.trim();
+  html += para("辅助检查", aux ? esc(aux).replace(/\n/g, "<br>") : "见辅助检查报告。");
+
+  /* 初步诊断 */
+  const dxList = checkedKeys(DIAGNOSES, "dx").map(k => DIAGNOSES[k]);
+  $("dx_extra").value.split("\n").map(s => s.trim()).filter(Boolean).forEach(s => dxList.push(s));
+  html += `<p style="margin-top:6px;"><span class="item-label">初步诊断：</span></p>`;
+  html += dxList.length
+    ? `<ol class="dx-list">${dxList.map(d => `<li>${esc(d)}</li>`).join("")}</ol>`
+    : `<p style="padding-left:30px;">　</p>`;
+
+  html += `
+      <div class="sign-area">
+        记录医师（签名）：${v("doctor") ? "　" + v("doctor") : "＿＿＿＿＿＿"}　　<br>
+        日期：＿＿＿＿年＿＿月＿＿日
+      </div>
+      <p class="disclaimer">说明：本入院记录为辅助生成草稿，各项内容须由经治医师核对、修改并签字后方为正式病历；
+      入院记录应于患者入院24小时内完成。</p>
+    </div>`;
+
+  const sheet = $("sheet");
+  sheet.innerHTML = html;
+  sheet.contentEditable = "true";
+  sheetGenerated = true; sheetEdited = false;
+}
+
+function ensureRendered() { if (!sheetGenerated) render(); }
+function doPrint() { ensureRendered(); window.print(); }
+function doPdf() {
+  ensureRendered();
+  alert("即将打开打印对话框：\n在「目标打印机 / 打印机」中选择「另存为 PDF」即可生成 PDF 文件。");
+  window.print();
+}
+
+/* 草稿保存 */
+const DRAFT_KEY = "cardiacAdmissionDraft";
+const TEXT_IDS = ["g_name","g_sex","g_age","g_nation","g_marriage","g_job","g_origin","g_id",
+  "g_teller","g_addr","g_admit","g_record","cc_symptom","cc_duration","cc_text","hpi",
+  "p_surg","p_allergy","p_infect","p_extra","ps_smoke","ps_smoke_n","ps_drink","ps_drink_n",
+  "ps_text","ps_marry","ps_family","ps_menses","v_t","v_p","v_r","v_bp","v_h","v_w","aux",
+  "dx_extra","doctor"].concat(EXAM.map(e => "ex_" + e.key));
+
+function saveDraft() {
+  const d = { fields: {}, pd: checkedKeys(PAST_DISEASES, "pd"), dx: checkedKeys(DIAGNOSES, "dx") };
+  TEXT_IDS.forEach(id => d.fields[id] = $(id).value);
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+}
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY)); if (!d) return;
+    TEXT_IDS.forEach(id => { if (d.fields[id] != null && $(id)) $(id).value = d.fields[id]; });
+    (d.pd || []).forEach(k => { const c = $("pd_" + k); if (c) c.checked = true; });
+    (d.dx || []).forEach(k => { const c = $("dx_" + k); if (c) c.checked = true; });
+  } catch (e) { /* 忽略损坏草稿 */ }
+}
+function clearAll() {
+  if (!confirm("确定清空所有已填写内容？")) return;
+  localStorage.removeItem(DRAFT_KEY); location.reload();
+}
+
+$("formPanel").addEventListener("change", saveDraft);
+$("formPanel").addEventListener("input", saveDraft);
+$("sheet").addEventListener("input", markEdited);
+loadDraft();
+toggleMenses();
+ccCount();
+</script>
+</body>
+</html>
