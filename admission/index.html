@@ -3,26 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>心脏外科入院信息快速采集</title>
+<title>心脏外科 · 主诉/现病史/查体快速生成</title>
 <style>
   :root {
-    --primary: #1e6fb8;
-    --primary-dark: #15528a;
-    --bg: #eef2f6;
-    --border: #d4dce4;
-    --danger: #c0392b;
-    --on: #1e8f5a;
+    --primary: #1e6fb8; --primary-dark: #15528a; --bg: #eef2f6;
+    --border: #d4dce4; --danger: #c0392b; --on: #1e8f5a;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0;
-    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    margin: 0; font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
     background: var(--bg); color: #2c3e50; font-size: 14px;
   }
   .toolbar {
-    position: sticky; top: 0; z-index: 10;
-    background: var(--primary); color: #fff; padding: 10px 20px;
-    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    position: sticky; top: 0; z-index: 10; background: var(--primary); color: #fff;
+    padding: 10px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   }
   .toolbar h1 { font-size: 17px; margin: 0 auto 0 0; font-weight: 600; }
   .toolbar button {
@@ -32,338 +26,324 @@
   .toolbar button:hover { background: #e8f1fa; }
   .toolbar button.danger { background: transparent; color: #ffd9d3; border: 1px solid #ffd9d3; }
 
-  .layout {
-    display: flex; gap: 16px; padding: 16px;
-    max-width: 1560px; margin: 0 auto; align-items: flex-start;
-  }
-  .form-panel { flex: 0 0 520px; }
-  .preview-panel { flex: 1; min-width: 0; }
-
+  .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
   fieldset {
     background: #fff; border: 1px solid var(--border); border-radius: 8px;
     margin: 0 0 14px; padding: 12px 16px 16px;
   }
   legend { font-weight: 700; color: var(--primary-dark); padding: 0 8px; font-size: 15px; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 12px; }
-  .grid6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px 8px; }
-  label.field { display: block; font-size: 13px; color: #555; }
-  label.field input, label.field select {
-    width: 100%; margin-top: 3px; padding: 6px 8px;
-    border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-family: inherit;
+
+  /* 病种多选分组 */
+  .dz-group { margin-bottom: 8px; }
+  .dz-group > .g-name { font-size: 12.5px; color: #888; font-weight: 700; margin-bottom: 4px; }
+  .dz-items { display: flex; flex-wrap: wrap; gap: 6px; }
+  .dz-items label {
+    display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px;
+    border: 1px solid var(--border); border-radius: 14px; cursor: pointer; user-select: none; font-size: 13px;
   }
-  textarea {
-    width: 100%; padding: 6px 8px; border: 1px solid var(--border);
-    border-radius: 4px; font-size: 13.5px; font-family: inherit; resize: vertical; line-height: 1.55;
-  }
-  .hint { font-size: 12px; color: #888; margin: 4px 0 6px; }
+  .dz-items label:has(input:checked) { background: #e8f1fa; border-color: var(--primary); color: var(--primary-dark); font-weight: 600; }
+  .dz-items input { display: none; }
+
   .group-label { font-size: 12.5px; color: #555; font-weight: 700; margin: 8px 0 3px; }
-
-  /* 病种选择 */
-  .disease-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
-  .disease-tabs button {
-    flex: 1; min-width: 100px; padding: 10px 6px; font-size: 14.5px; font-weight: 600;
-    border: 1.5px solid var(--border); background: #fff; color: #555;
-    border-radius: 6px; cursor: pointer;
-  }
-  .disease-tabs button.on { border-color: var(--primary); background: #e8f1fa; color: var(--primary-dark); }
-
-  /* chips：单击插入型（蓝）与多选型（点亮变绿） */
   .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 3px 0 4px; }
   .chips button {
     border: 1px solid var(--primary); background: #f4f9fe; color: var(--primary-dark);
     border-radius: 12px; padding: 3px 11px; font-size: 12.5px; cursor: pointer;
   }
   .chips button:hover { background: #e0eefb; }
-  .chips.multi button.on {
-    border-color: var(--on); background: #e4f6ed; color: var(--on); font-weight: 600;
-  }
-  .cc-count { font-size: 12px; color: #888; }
-  .cc-count.warn { color: var(--danger); }
-  .sub-actions button {
-    padding: 6px 14px; border: 1px dashed var(--primary); background: #f4f9fe;
-    color: var(--primary-dark); border-radius: 4px; cursor: pointer; font-size: 13px;
-  }
-  .exam-row { margin-bottom: 7px; }
-  .exam-row > span { font-size: 13px; color: #555; font-weight: 600; }
-  .exam-row textarea { margin-top: 3px; font-size: 13px; }
+  .chips.multi button.on { border-color: var(--on); background: #e4f6ed; color: var(--on); font-weight: 600; }
 
-  /* 预览输出 */
-  .sheet {
-    background: #fff; width: 210mm; max-width: 100%; min-height: 120mm;
-    margin: 0 auto; padding: 14mm 16mm; box-shadow: 0 2px 12px rgba(0,0,0,.15);
-    font-size: 13.5px; line-height: 1.75;
+  label.field { display: block; font-size: 13px; color: #555; }
+  label.field input {
+    width: 100%; margin-top: 3px; padding: 6px 8px;
+    border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-family: inherit;
   }
-  .sheet h2.doc-title { text-align: center; font-size: 19px; margin: 0 0 6px; letter-spacing: 2px; }
-  .sheet hr.rule { border: none; border-top: 2px solid #333; margin: 4px 0 10px; }
-  .seg { margin-bottom: 10px; }
-  .seg-head {
-    font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 2px;
+  .row { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+  .vitals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px 8px; margin-bottom: 8px; }
+  .vitals input { width: 100%; margin-top: 3px; padding: 6px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+
+  textarea {
+    width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 4px;
+    font-size: 13.5px; font-family: inherit; resize: vertical; line-height: 1.6; background: #fcfdfe;
   }
+  .out-head { display: flex; align-items: center; gap: 8px; margin: 8px 0 3px; }
+  .out-head .lbl { font-size: 13px; color: #555; font-weight: 700; }
   .copy-btn {
     border: 1px solid var(--primary); background: #fff; color: var(--primary-dark);
-    border-radius: 4px; padding: 1px 10px; font-size: 12px; cursor: pointer;
+    border-radius: 4px; padding: 2px 12px; font-size: 12px; cursor: pointer;
   }
   .copy-btn:hover { background: #e8f1fa; }
-  .seg-body { text-align: justify; }
-  .seg-body p { margin: 2px 0; }
-  .empty-tip { color: #aaa; text-align: center; padding: 60px 0; }
-  .edit-hint { font-size: 12px; color: #777; margin: 0 0 8px; }
-  .sheet[contenteditable="true"]:focus { outline: 2px dashed #b8d4ec; outline-offset: 2px; }
-
-  @media print {
-    @page { size: A4; margin: 14mm; }
-    body { background: #fff; }
-    .toolbar, .form-panel, .edit-hint, .copy-btn { display: none !important; }
-    .layout { display: block; padding: 0; }
-    .sheet { width: auto; min-height: 0; box-shadow: none; padding: 0; margin: 0; }
+  .copy-btn.done { border-color: var(--on); color: var(--on); }
+  .gen-btn {
+    margin: 2px 0 2px; padding: 6px 16px; border: 1px dashed var(--primary);
+    background: #f4f9fe; color: var(--primary-dark); border-radius: 4px; cursor: pointer; font-size: 13px;
   }
+  .cc-count { font-size: 12px; color: #888; margin-left: 8px; }
+  .cc-count.warn { color: var(--danger); }
+  .ex-label { font-size: 12.5px; color: #777; margin: 6px 0 2px; font-weight: 600; }
+  .tip { font-size: 12px; color: #888; margin: 4px 0; }
 </style>
 </head>
 <body>
 
 <div class="toolbar">
-  <h1>心脏外科 · 入院信息快速采集</h1>
-  <button onclick="render()">生成 / 刷新</button>
+  <h1>心脏外科 · 主诉 / 现病史 / 查体 快速生成</h1>
   <button onclick="copyAll(this)">复制全部</button>
-  <button onclick="doPrint()">打印</button>
   <button class="danger" onclick="clearAll()">清空重填</button>
 </div>
 
-<div class="layout">
-  <div class="form-panel" id="formPanel">
+<div class="wrap">
 
-    <fieldset>
-      <legend>① 患者 / 病种</legend>
-      <div class="grid3" style="margin-bottom:10px;">
-        <label class="field">姓名 <input id="g_name"></label>
-        <label class="field">性别
-          <select id="g_sex"><option value=""></option><option>男</option><option>女</option></select>
-        </label>
-        <label class="field">年龄 <input id="g_age" placeholder="岁"></label>
-      </div>
-      <div class="disease-tabs" id="diseaseTabs"></div>
-      <p class="hint">选择病种后，下方主诉症状、现病史片段、查体体征、诊断均切换为该病种常用内容。</p>
-    </fieldset>
+  <fieldset>
+    <legend>① 病种（可多选，细化到具体病变）</legend>
+    <div id="diseaseGroups"></div>
+    <p class="tip">勾选后，下方主诉症状、现病史伴随症状、查体杂音/体征均按所选病变联合生成。</p>
+  </fieldset>
 
-    <fieldset>
-      <legend>② 主诉</legend>
-      <div class="chips" id="ccChips"></div>
-      <div class="grid3">
-        <label class="field" style="grid-column:span 2;">主要症状 <input id="cc_symptom"></label>
-        <label class="field">持续时间 <input id="cc_duration" placeholder="3年，加重1周"></label>
-      </div>
-      <label class="field" style="margin-top:6px;">主诉（自动成句，可改）
-        <input id="cc_text" oninput="ccCount()">
-      </label>
-      <span class="cc-count" id="ccCount">0 字</span>
-    </fieldset>
-
-    <fieldset>
-      <legend>③ 现病史（点选组装）</legend>
-      <div class="group-label">诱因（单选）</div>
-      <div class="chips multi single" id="hpi_cause"></div>
-      <div class="group-label">起病方式（单选）</div>
-      <div class="chips multi single" id="hpi_onset"></div>
-      <div class="group-label">伴随症状（多选）</div>
-      <div class="chips multi" id="hpi_assoc"></div>
-      <div class="group-label">院外诊治经过（多选）</div>
-      <div class="chips multi" id="hpi_care"></div>
-      <div class="group-label">一般情况（多选，不选则用默认）</div>
-      <div class="chips multi" id="hpi_status"></div>
-      <div class="sub-actions" style="margin-top:8px;">
-        <button onclick="buildHPI()">⟳ 按以上点选组装现病史</button>
-      </div>
-      <textarea id="hpi" rows="7" style="margin-top:6px;" placeholder="点选上方内容后点「组装现病史」，生成后可在此修改补充（____ 处需填写具体内容）"></textarea>
-    </fieldset>
-
-    <fieldset>
-      <legend>④ 体格检查（默认正常，点体征改异常）</legend>
-      <div class="grid6" style="margin-bottom:8px;">
-        <label class="field">T℃ <input id="v_t" value="36.5"></label>
-        <label class="field">P次/分 <input id="v_p" value="78"></label>
-        <label class="field">R次/分 <input id="v_r" value="18"></label>
-        <label class="field" style="grid-column:span 2;">BP mmHg <input id="v_bp" placeholder="120/75"></label>
-        <label class="field">SpO₂% <input id="v_spo2"></label>
-      </div>
-      <div class="group-label">本病种常见阳性体征（点击写入对应系统）</div>
-      <div class="chips" id="examChips"></div>
-      <div id="examRows" style="margin-top:6px;"></div>
-    </fieldset>
-
-    <fieldset>
-      <legend>⑤ 初步诊断</legend>
-      <div class="chips multi" id="dxChips"></div>
-      <label class="field" style="margin-top:6px;">其他诊断（每行一个）
-        <textarea id="dx_extra" rows="2"></textarea>
-      </label>
-    </fieldset>
-  </div>
-
-  <div class="preview-panel">
-    <p class="edit-hint">💡 生成后各段可直接点击修改；点各段「复制」或顶部「复制全部」，粘贴到内部系统即可。重新点「生成 / 刷新」会按左侧重新生成（提示是否覆盖手动修改）。注意核对 ____ 占位处是否已补全。</p>
-    <div class="sheet" id="sheet">
-      <p class="empty-tip">选择病种、点选内容后，点击顶部「生成 / 刷新」查看结果</p>
+  <fieldset>
+    <legend>② 主诉</legend>
+    <div class="chips" id="ccChips"></div>
+    <div class="row">
+      <label class="field">主要症状 <input id="cc_symptom"></label>
+      <label class="field">持续时间 <input id="cc_duration" placeholder="3年，加重1周"></label>
     </div>
-  </div>
+    <div class="out-head">
+      <span class="lbl">主诉</span>
+      <button class="copy-btn" onclick="copyField('cc_text', this)">复制</button>
+      <span class="cc-count" id="ccCount"></span>
+    </div>
+    <input id="cc_text" oninput="ccCount()" style="width:100%;padding:7px 9px;border:1px solid var(--border);border-radius:4px;font-size:14px;">
+  </fieldset>
+
+  <fieldset>
+    <legend>③ 现病史</legend>
+    <div class="group-label">诱因（单选）</div>
+    <div class="chips multi single" id="hpi_cause"></div>
+    <div class="group-label">起病方式（单选）</div>
+    <div class="chips multi single" id="hpi_onset"></div>
+    <div class="group-label">伴随症状（多选）</div>
+    <div class="chips multi" id="hpi_assoc"></div>
+    <div class="group-label">院外诊治经过（多选）</div>
+    <div class="chips multi" id="hpi_care"></div>
+    <div class="group-label">一般情况（多选，不选用默认）</div>
+    <div class="chips multi" id="hpi_status"></div>
+    <button class="gen-btn" onclick="buildHPI()" style="margin-top:8px;">⟳ 组装现病史</button>
+    <div class="out-head">
+      <span class="lbl">现病史</span>
+      <button class="copy-btn" onclick="copyField('hpi', this)">复制</button>
+    </div>
+    <textarea id="hpi" rows="6" placeholder="点选上方内容后点「组装现病史」；____ 处需手动补全"></textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>④ 体格检查（心 / 肺 / 腹部 / 下肢）</legend>
+    <div class="vitals">
+      <label class="field">T℃ <input id="v_t" value="36.5"></label>
+      <label class="field">P次/分 <input id="v_p" value="78"></label>
+      <label class="field">R次/分 <input id="v_r" value="18"></label>
+      <label class="field">BP mmHg <input id="v_bp" placeholder="120/75"></label>
+      <label class="field">SpO₂% <input id="v_spo2"></label>
+    </div>
+    <button class="gen-btn" onclick="genExam()">⟳ 按所选病种联合生成查体</button>
+    <p class="tip">默认正常，生成后按实际修改；多个瓣膜病变的杂音会自动合并到“心脏”一栏。</p>
+    <div class="ex-label">心脏</div>
+    <textarea id="ex_heart" rows="2"></textarea>
+    <div class="ex-label">肺部</div>
+    <textarea id="ex_lung" rows="2"></textarea>
+    <div class="ex-label">腹部</div>
+    <textarea id="ex_abdomen" rows="2"></textarea>
+    <div class="ex-label">下肢</div>
+    <textarea id="ex_limb" rows="2"></textarea>
+    <div class="out-head">
+      <span class="lbl">查体（含生命体征，整段）</span>
+      <button class="copy-btn" onclick="copyExam(this)">复制查体</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>⑤ 初步诊断（按所选病种自动列出）</legend>
+    <div class="out-head" style="margin-top:0;">
+      <span class="lbl">初步诊断</span>
+      <button class="copy-btn" onclick="copyField('dx_text', this)">复制</button>
+      <button class="gen-btn" style="margin:0 0 0 6px;padding:3px 12px;" onclick="buildDx()">⟳ 生成</button>
+    </div>
+    <textarea id="dx_text" rows="4" placeholder="点「生成」按所选病种列出，可手动增删"></textarea>
+  </fieldset>
+
 </div>
 
 <script>
 /* =====================================================================
    病种知识库：科室维护人员仅需修改本区
-   每个病种：cc=主诉症状；hpi=现病史点选片段（cause/onset/assoc/care/status）；
-   exam=常见阳性体征(sys=写入的查体系统, text=完整句)；dx=常见诊断
+   每条病变可贡献：cc(主诉症状) / assoc(现病史伴随) / heart{border,rhythm,murmur}
+   / lung / abdomen / limb（查体片段，多病变自动合并） / dx(诊断)
 ===================================================================== */
+const COMMON_SYMPTOMS = ["胸闷","胸痛","心悸","气促","活动后气促","夜间阵发性呼吸困难",
+  "双下肢水肿","晕厥","发热","乏力","咳嗽、咳痰","咯血"];
 
-/* 通用片段（各病种共享，自动并入） */
 const COMMON = {
-  cause: ["无明显诱因", "劳累后", "受凉感冒后", "情绪激动后", "饱餐后"],
-  onset: ["逐渐出现", "突发", "反复出现"],
-  care: [
-    "未予正规诊治",
-    "曾就诊于当地医院",
-    "行心脏彩超检查提示“____”",
-    "行胸部CT检查提示“____”",
-    "经治疗后症状稍缓解",
-    "经治疗后症状无明显缓解",
-    "本次为进一步诊治，门诊以“____”收入我科"
-  ],
-  status: [
-    "发病以来精神、饮食、睡眠可",
-    "精神欠佳", "饮食差", "睡眠差",
-    "大小便正常", "尿量减少", "体重无明显变化", "体重下降"
-  ]
+  cause: ["无明显诱因","劳累后","受凉感冒后","情绪激动后","饱餐后"],
+  onset: ["逐渐出现","突发","反复出现"],
+  assoc: ["伴心悸","伴气促","伴胸痛","伴出汗","无发热","无晕厥"],
+  care: ["未予正规诊治","曾就诊于当地医院","行心脏彩超提示“____”","行主动脉CTA提示“____”",
+    "行冠状动脉造影提示“____”","经治疗后症状稍缓解","经治疗后症状无明显缓解",
+    "本次为进一步诊治，门诊以“____”收入我科"],
+  status: ["发病以来精神、饮食、睡眠可","精神欠佳","饮食差","睡眠差","大小便正常",
+    "尿量减少","体重无明显变化","体重下降"]
 };
 
-const TEMPLATES = {
-  hf: {
-    label: "心力衰竭",
-    cc: ["活动后胸闷、气促", "夜间阵发性呼吸困难", "不能平卧", "双下肢水肿", "心悸", "乏力", "腹胀、纳差", "尿量减少"],
-    assoc: ["伴夜间阵发性呼吸困难", "伴端坐呼吸", "伴双下肢水肿", "伴腹胀、纳差", "伴尿量减少",
-            "伴咳嗽、咳白色泡沫痰", "伴心悸", "伴乏力", "无胸痛", "无发热", "无咯血"],
-    care: ["予利尿、强心等药物治疗"],
-    exam: [
-      { sys: "general", text: "神志清楚，精神欠佳，半卧位，查体合作。" },
-      { sys: "general", text: "神志清楚，端坐呼吸，急性病容，查体合作。" },
-      { sys: "headneck", text: "口唇发绀，颈静脉怒张，气管居中，甲状腺无肿大。" },
-      { sys: "lung", text: "双肺呼吸音粗，双肺底可闻及细湿性啰音。" },
-      { sys: "lung", text: "双肺可闻及广泛干湿性啰音。" },
-      { sys: "heart", text: "心前区无异常隆起，心界向左下扩大，心率__次/分，律齐，心音低钝，各瓣膜听诊区未闻及明显病理性杂音。" },
-      { sys: "heart", text: "心界扩大，心率__次/分，心律绝对不齐，第一心音强弱不等，脉搏短绌。" },
-      { sys: "abdomen", text: "腹软，肝肋下__cm可触及、质软伴压痛，肝颈静脉回流征阳性，移动性浊音阴性。" },
-      { sys: "spine", text: "脊柱四肢无畸形，双下肢中度凹陷性水肿。" },
-      { sys: "spine", text: "脊柱四肢无畸形，双下肢重度凹陷性水肿，骶尾部水肿。" }
-    ],
-    dx: ["慢性心力衰竭急性加重", "心功能Ⅲ级（NYHA分级）", "心功能Ⅳ级（NYHA分级）",
-         "心脏瓣膜病", "扩张型心肌病", "缺血性心肌病", "心房颤动", "高血压性心脏病"]
-  },
+const COND = {
+  /* 瓣膜病 */
+  ms: { label:"二尖瓣狭窄", dx:"心脏瓣膜病：二尖瓣狭窄",
+    cc:["活动后心悸、气促","咯血"], assoc:["伴心悸","伴咳嗽、咯血","伴夜间阵发性呼吸困难"],
+    heart:{ border:"心界向左扩大", murmur:"心尖区可触及舒张期震颤，闻及舒张期隆隆样杂音，第一心音亢进，肺动脉瓣区第二心音亢进" } },
+  mr: { label:"二尖瓣关闭不全", dx:"心脏瓣膜病：二尖瓣关闭不全",
+    cc:["活动后胸闷、气促"], assoc:["伴心悸","伴乏力"],
+    heart:{ border:"心界向左下扩大", murmur:"心尖区可闻及__/6级全收缩期吹风样杂音，向左腋下传导" } },
+  as: { label:"主动脉瓣狭窄", dx:"心脏瓣膜病：主动脉瓣狭窄",
+    cc:["活动后胸闷、气促","心绞痛","晕厥"], assoc:["伴心绞痛","伴黑矇、晕厥"],
+    heart:{ border:"心界向左下扩大", murmur:"主动脉瓣区可触及收缩期震颤，闻及__/6级粗糙喷射样收缩期杂音，向颈部传导，主动脉瓣区第二心音减弱" } },
+  ar: { label:"主动脉瓣关闭不全", dx:"心脏瓣膜病：主动脉瓣关闭不全",
+    cc:["活动后心悸、气促"], assoc:["伴心悸，自觉心搏增强","伴头颈部搏动感"],
+    heart:{ border:"心界向左下扩大呈靴形", murmur:"主动脉瓣第二听诊区可闻及叹气样舒张期杂音，向心尖传导" },
+    limb:"可见周围血管征（水冲脉、毛细血管搏动征及股动脉枪击音）" },
+  tr: { label:"三尖瓣关闭不全", dx:"心脏瓣膜病：三尖瓣关闭不全",
+    cc:["腹胀","双下肢水肿"], assoc:["伴腹胀、纳差","伴双下肢水肿"],
+    heart:{ murmur:"胸骨左缘第4~5肋间可闻及全收缩期吹风样杂音，吸气时增强" },
+    abdomen:"肝肿大，肝肋下__cm可触及，可有搏动感", limb:"双下肢凹陷性水肿" },
 
-  pe: {
-    label: "心包积液",
-    cc: ["胸闷", "活动后气促", "胸痛", "发热", "不能平卧", "乏力", "纳差", "体检发现心包积液"],
-    assoc: ["伴发热", "伴盗汗", "伴乏力、消瘦", "伴不能平卧", "伴干咳", "伴声音嘶哑",
-            "伴双下肢水肿", "无咯血", "无胸痛"],
-    care: ["行心脏彩超提示心包积液（少量/中量/大量）", "予抗感染等治疗"],
-    exam: [
-      { sys: "general", text: "神志清楚，精神欠佳，半卧位，查体合作。" },
-      { sys: "headneck", text: "口唇无发绀，颈静脉怒张，气管居中。" },
-      { sys: "lung", text: "双肺呼吸音清，左下肺呼吸音减低，未闻及干湿性啰音。" },
-      { sys: "heart", text: "心前区无异常隆起，心尖搏动减弱，心界向两侧扩大，心率__次/分，律齐，心音遥远，各瓣膜听诊区未闻及病理性杂音。" },
-      { sys: "heart", text: "心率__次/分，律齐，心音遥远，可闻及心包摩擦音。" },
-      { sys: "vessel", text: "可触及奇脉，双侧桡动脉、足背动脉搏动对称。" },
-      { sys: "abdomen", text: "腹软，肝肋下可触及，移动性浊音阴性。" },
-      { sys: "spine", text: "脊柱四肢无畸形，双下肢轻度凹陷性水肿。" }
-    ],
-    dx: ["心包积液（大量）", "心包积液（中量）", "心包积液（少量）", "急性心包炎",
-         "结核性心包炎？", "恶性心包积液待排", "心包填塞"]
-  },
+  /* 冠心病 */
+  cad: { label:"冠心病/心绞痛", dx:"冠状动脉粥样硬化性心脏病  不稳定型心绞痛",
+    cc:["心前区疼痛","活动后胸闷、胸痛"],
+    assoc:["心前区压榨性疼痛，向左肩及左上臂放射","活动后加重，休息或含服硝酸甘油后可缓解","伴出汗","伴心悸"] },
+  omi: { label:"陈旧性心梗", dx:"陈旧性心肌梗死",
+    cc:["活动后胸闷、气促"], assoc:["既往有心肌梗死病史","活动耐量下降"] },
 
-  cardiac: {
-    label: "心脏手术",
-    cc: ["活动后胸闷、气促", "胸痛", "心悸", "发现心脏杂音", "体检发现心脏病变", "晕厥", "头晕、乏力"],
-    assoc: ["伴心前区疼痛，向左肩背部放射", "活动后加重、休息后缓解", "伴心悸", "伴头晕",
-            "伴晕厥", "伴双下肢水肿", "无夜间阵发性呼吸困难", "无发热"],
-    care: ["行心脏彩超提示“____”", "行冠状动脉造影提示“____”", "建议手术治疗，遂收入我科"],
-    exam: [
-      { sys: "heart", text: "心前区无异常隆起，心界不大，心率__次/分，律齐，二尖瓣听诊区可闻及__/6级收缩期杂音。" },
-      { sys: "heart", text: "心率__次/分，律齐，二尖瓣听诊区可闻及舒张期隆隆样杂音。" },
-      { sys: "heart", text: "心率__次/分，律齐，主动脉瓣听诊区可闻及__/6级收缩期杂音，向颈部传导。" },
-      { sys: "heart", text: "心率__次/分，律齐，主动脉瓣听诊区可闻及舒张期叹气样杂音。" },
-      { sys: "heart", text: "心率__次/分，律齐，胸骨左缘第3～4肋间可闻及__/6级收缩期杂音。" },
-      { sys: "heart", text: "心界扩大，心率__次/分，心律绝对不齐，第一心音强弱不等。" },
-      { sys: "lung", text: "双肺呼吸音粗，双肺底可闻及细湿性啰音。" },
-      { sys: "spine", text: "脊柱四肢无畸形，双下肢轻度凹陷性水肿。" }
-    ],
-    dx: ["心脏瓣膜病：二尖瓣狭窄（重度）", "心脏瓣膜病：二尖瓣关闭不全（重度）",
-         "心脏瓣膜病：主动脉瓣狭窄（重度）", "心脏瓣膜病：主动脉瓣关闭不全（重度）",
-         "冠状动脉粥样硬化性心脏病", "先天性心脏病：房间隔缺损", "先天性心脏病：室间隔缺损",
-         "感染性心内膜炎", "心脏黏液瘤", "心房颤动", "心功能Ⅱ级（NYHA分级）", "心功能Ⅲ级（NYHA分级）"]
-  },
+  /* 先天性心脏病 */
+  asd: { label:"房间隔缺损", dx:"先天性心脏病：房间隔缺损",
+    cc:["反复呼吸道感染","活动后气促","发现心脏杂音"], assoc:["自幼易患感冒及呼吸道感染","活动耐量较同龄人差"],
+    heart:{ murmur:"胸骨左缘第2~3肋间可闻及__/6级收缩期杂音，肺动脉瓣区第二心音亢进、固定分裂" } },
+  vsd: { label:"室间隔缺损", dx:"先天性心脏病：室间隔缺损",
+    cc:["反复呼吸道感染","发现心脏杂音"], assoc:["自幼发现心脏杂音","自幼易患呼吸道感染"],
+    heart:{ murmur:"胸骨左缘第3~4肋间可触及收缩期震颤，闻及__/6级粗糙全收缩期杂音" } },
+  pda: { label:"动脉导管未闭", dx:"先天性心脏病：动脉导管未闭",
+    cc:["发现心脏杂音","反复呼吸道感染"], assoc:["自幼发现心脏杂音"],
+    heart:{ murmur:"胸骨左缘第2肋间可闻及连续性机器样杂音" },
+    limb:"可见周围血管征（水冲脉、股动脉枪击音）" },
+  tof: { label:"法洛四联症", dx:"先天性心脏病：法洛四联症",
+    cc:["发绀","活动后气促、蹲踞"], assoc:["自幼口唇发绀","活动后喜蹲踞"],
+    heart:{ murmur:"胸骨左缘第2~4肋间可闻及收缩期杂音，肺动脉瓣区第二心音减弱" },
+    limb:"可见杵状指（趾）" },
 
-  vascular: {
-    label: "血管手术",
-    cc: ["突发胸背部撕裂样疼痛", "胸痛", "腹痛", "腰背部疼痛", "发现纵隔增宽", "体检发现主动脉瘤", "双下肢疼痛"],
-    assoc: ["疼痛剧烈、呈撕裂样，向腹部及腰背部放射", "伴大汗", "伴恶心、呕吐", "伴肢体麻木、发凉",
-            "伴声音嘶哑", "伴晕厥", "伴头晕", "无意识障碍", "无肢体活动障碍"],
-    care: ["行主动脉CTA提示“____”", "予控制血压、心率及镇痛等治疗"],
-    exam: [
-      { sys: "general", text: "神志清楚，急性痛苦病容，平卧位，查体合作。" },
-      { sys: "heart", text: "心率__次/分，律齐，主动脉瓣听诊区可闻及舒张期杂音。" },
-      { sys: "vessel", text: "双上肢血压不对称（左__/__mmHg，右__/__mmHg），左侧桡动脉搏动减弱。" },
-      { sys: "vessel", text: "右侧足背动脉搏动减弱，左侧足背动脉搏动未触及，双下肢皮温减低。" },
-      { sys: "abdomen", text: "腹软，脐周可触及搏动性包块，约__cm×__cm，可闻及血管杂音。" },
-      { sys: "spine", text: "脊柱四肢无畸形，双下肢无水肿，左下肢皮温较对侧减低。" }
-    ],
-    dx: ["主动脉夹层（Stanford A型）", "主动脉夹层（Stanford B型）", "胸主动脉瘤",
-         "腹主动脉瘤", "主动脉壁间血肿", "主动脉穿透性溃疡", "高血压病3级（很高危）", "下肢动脉硬化闭塞症"]
-  }
+  /* 心衰 / 心律失常 */
+  hf: { label:"心力衰竭", dx:"心功能不全（心功能__级 NYHA分级）",
+    cc:["活动后胸闷、气促","夜间阵发性呼吸困难","不能平卧","双下肢水肿"],
+    assoc:["伴夜间阵发性呼吸困难","伴端坐呼吸","伴双下肢水肿","伴腹胀、纳差","伴尿量减少"],
+    heart:{ border:"心界向左下扩大" },
+    lung:"双肺呼吸音粗，双肺底可闻及细湿性啰音",
+    abdomen:"肝肋下__cm可触及，质软伴轻压痛，肝颈静脉回流征阳性",
+    limb:"双下肢对称性凹陷性水肿" },
+  af: { label:"心房颤动", dx:"心律失常：心房颤动",
+    cc:["心悸"], assoc:["伴阵发性心悸","自觉心跳不规则"],
+    heart:{ rhythm:"心律绝对不齐，第一心音强弱不等，脉搏短绌" } },
+
+  /* 心包积液 */
+  pe: { label:"心包积液", dx:"心包积液（____）",
+    cc:["胸闷","气促","不能平卧","发热"], assoc:["伴发热","伴乏力、消瘦","伴不能平卧"],
+    heart:{ border:"心界向两侧扩大", murmur:"心尖搏动减弱，心音遥远，可闻及心包摩擦音" } },
+
+  /* 主动脉 / 血管 */
+  aadA: { label:"主动脉夹层A型", dx:"主动脉夹层（Stanford A型）",
+    cc:["突发胸背部撕裂样疼痛"], assoc:["呈撕裂样疼痛，向腰背部放射","伴大汗淋漓","伴恶心、呕吐"],
+    heart:{ murmur:"主动脉瓣区可闻及舒张期杂音" }, limb:"双侧肢体血压、脉搏不对称" },
+  aadB: { label:"主动脉夹层B型", dx:"主动脉夹层（Stanford B型）",
+    cc:["突发胸背部撕裂样疼痛","腹痛"], assoc:["呈撕裂样疼痛，向腰背部及腹部放射","伴大汗"],
+    limb:"双下肢血压、脉搏不对称，左下肢皮温减低" },
+  taa: { label:"胸主动脉瘤", dx:"胸主动脉瘤",
+    cc:["胸背部疼痛","声音嘶哑","发现纵隔增宽"], assoc:["伴声音嘶哑","伴吞咽不适"] },
+  aaa: { label:"腹主动脉瘤", dx:"腹主动脉瘤",
+    cc:["腹部搏动性包块","腹痛、腰背痛"], assoc:["伴腰背部疼痛"],
+    abdomen:"脐周可触及搏动性包块，约__cm×__cm，可闻及收缩期血管杂音" },
+
+  /* 其他 */
+  ie: { label:"感染性心内膜炎", dx:"感染性心内膜炎",
+    cc:["发热","乏力"], assoc:["伴反复发热","伴畏寒、盗汗","伴乏力、消瘦"],
+    heart:{ murmur:"心脏听诊可闻及病理性杂音（性质可变）" },
+    limb:"皮肤可见瘀点，可见Osler结节及Janeway损害" },
+  myxoma: { label:"心脏黏液瘤", dx:"心脏黏液瘤",
+    cc:["活动后气促","晕厥","发热"], assoc:["体位改变时症状明显","伴一过性晕厥"],
+    heart:{ murmur:"心尖区可闻及随体位改变的舒张期杂音（可闻及肿瘤扑落音）" } }
 };
 
-/* 体格检查默认正常值 */
-const EXAM = [
-  { key: "general", label: "一般情况", def: "发育正常，营养中等，神志清楚，自主体位，查体合作。" },
-  { key: "headneck",label: "头颈部", def: "口唇无发绀，巩膜无黄染，颈软，颈静脉无怒张，气管居中，甲状腺无肿大。" },
-  { key: "lung",    label: "肺部", def: "胸廓对称无畸形，双肺呼吸音清，未闻及干湿性啰音及胸膜摩擦音。" },
-  { key: "heart",   label: "心脏", def: "心前区无异常隆起，心尖搏动正常，未触及震颤，叩诊心界不大，心率__次/分，律齐，各瓣膜听诊区未闻及病理性杂音。" },
-  { key: "abdomen", label: "腹部", def: "腹平软，全腹无压痛及反跳痛，肝脾肋下未触及，移动性浊音阴性，肠鸣音正常。" },
-  { key: "vessel",  label: "外周血管", def: "双侧桡动脉、足背动脉搏动正常对称，无水冲脉及枪击音。" },
-  { key: "spine",   label: "脊柱四肢", def: "脊柱生理弯曲存在，四肢活动自如，双下肢无水肿。" },
-  { key: "nerve",   label: "神经系统", def: "生理反射存在，病理反射未引出。" }
+const GROUPS = [
+  { name:"瓣膜病", items:["ms","mr","as","ar","tr"] },
+  { name:"冠心病", items:["cad","omi"] },
+  { name:"先天性心脏病", items:["asd","vsd","pda","tof"] },
+  { name:"心力衰竭 / 心律失常", items:["hf","af"] },
+  { name:"心包积液", items:["pe"] },
+  { name:"主动脉 / 血管", items:["aadA","aadB","taa","aaa"] },
+  { name:"其他", items:["ie","myxoma"] }
 ];
 
+/* 查体正常默认值 */
+const NORMAL = {
+  lung: "双肺呼吸音清，未闻及干湿性啰音及胸膜摩擦音。",
+  abdomen: "腹平软，全腹无压痛及反跳痛，肝脾肋下未触及，移动性浊音阴性。",
+  limb: "双下肢无水肿，足背动脉搏动正常对称。"
+};
+
 /* =====================================================================
-   页面逻辑
+   逻辑
 ===================================================================== */
 const $ = id => document.getElementById(id);
-const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-let currentDisease = "hf";
+const uniq = a => [...new Set(a)];
 
-/* ---- 病种切换 ---- */
-$("diseaseTabs").innerHTML = Object.entries(TEMPLATES).map(([k, t]) =>
-  `<button type="button" data-k="${k}" onclick="switchDisease('${k}')">${t.label}</button>`).join("");
+/* 病种多选渲染 */
+$("diseaseGroups").innerHTML = GROUPS.map(g =>
+  `<div class="dz-group"><div class="g-name">${g.name}</div><div class="dz-items">` +
+  g.items.map(k => `<label><input type="checkbox" id="cd_${k}" onchange="onCondChange()">${COND[k].label}</label>`).join("") +
+  `</div></div>`).join("");
 
-function switchDisease(k) {
-  currentDisease = k;
-  document.querySelectorAll("#diseaseTabs button").forEach(b =>
-    b.classList.toggle("on", b.dataset.k === k));
-  const t = TEMPLATES[k];
-  $("ccChips").innerHTML = t.cc.map(s =>
-    `<button type="button" onclick="addSymptom(this.textContent)">${s}</button>`).join("");
-  fillMulti("hpi_cause", COMMON.cause);
-  fillMulti("hpi_onset", COMMON.onset);
-  fillMulti("hpi_assoc", t.assoc);
-  fillMulti("hpi_care", (t.care || []).concat(COMMON.care));
-  fillMulti("hpi_status", COMMON.status);
-  $("examChips").innerHTML = t.exam.map((e, i) =>
-    `<button type="button" title="写入【${EXAM.find(x=>x.key===e.sys).label}】" onclick="applyExam('${k}',${i},this)">${e.text.length>22?e.text.slice(0,22)+"…":e.text}</button>`).join("");
-  $("dxChips").innerHTML = t.dx.map(s =>
-    `<button type="button" onclick="this.classList.toggle('on');saveDraft()">${s}</button>`).join("");
+const selectedKeys = () => Object.keys(COND).filter(k => $("cd_" + k)?.checked);
+
+function onCondChange() {
+  rebuildCcChips();
+  rebuildMulti("hpi_assoc", uniq(selectedKeys().flatMap(k => COND[k].assoc || [])).concat(COMMON.assoc));
   saveDraft();
 }
 
-function fillMulti(id, arr) {
+/* —— 主诉 —— */
+function rebuildCcChips() {
+  const fromCond = uniq(selectedKeys().flatMap(k => COND[k].cc || []));
+  const list = uniq(fromCond.concat(COMMON_SYMPTOMS));
+  $("ccChips").innerHTML = list.map(s =>
+    `<button type="button" onclick="addSymptom(this.textContent)">${s}</button>`).join("");
+}
+function addSymptom(s) {
+  const f = $("cc_symptom");
+  const cur = f.value.split("、").map(x => x.trim()).filter(Boolean);
+  if (!cur.includes(s)) cur.push(s);
+  f.value = cur.join("、");
+  composeCC();
+}
+function composeCC() {
+  $("cc_text").value = $("cc_symptom").value.trim() + $("cc_duration").value.trim();
+  ccCount(); saveDraft();
+}
+$("cc_symptom").addEventListener("input", composeCC);
+$("cc_duration").addEventListener("input", composeCC);
+function ccCount() {
+  const n = $("cc_text").value.length, el = $("ccCount");
+  el.textContent = n ? n + " 字" + (n > 20 ? "（建议≤20字）" : "") : "";
+  el.className = "cc-count" + (n > 20 ? " warn" : "");
+}
+
+/* —— 现病史 multi-chips —— */
+function rebuildMulti(id, arr) {
+  const on = new Set([...document.querySelectorAll(`#${id} button.on`)].map(b => b.textContent));
   const single = $(id).classList.contains("single");
-  $(id).innerHTML = arr.map(s =>
-    `<button type="button" onclick="pickChip(this,${single})">${s}</button>`).join("");
+  $(id).innerHTML = uniq(arr).map(s =>
+    `<button type="button" class="${on.has(s) ? "on" : ""}" onclick="pickChip(this,${single})">${s}</button>`).join("");
 }
 function pickChip(btn, single) {
   if (single) btn.parentNode.querySelectorAll("button").forEach(b => { if (b !== btn) b.classList.remove("on"); });
@@ -372,35 +352,21 @@ function pickChip(btn, single) {
 }
 const picked = id => [...document.querySelectorAll(`#${id} button.on`)].map(b => b.textContent);
 
-/* ---- 主诉 ---- */
-function addSymptom(s) {
-  const f = $("cc_symptom");
-  f.value = f.value ? f.value + "、" + s : s;
-  composeCC();
-}
-function composeCC() {
-  const sym = $("cc_symptom").value.trim(), dur = $("cc_duration").value.trim();
-  if (sym || dur) $("cc_text").value = sym + dur;
-  ccCount(); saveDraft();
-}
-$("cc_symptom").addEventListener("input", composeCC);
-$("cc_duration").addEventListener("input", composeCC);
-function ccCount() {
-  const n = $("cc_text").value.length, el = $("ccCount");
-  el.textContent = n + " 字" + (n > 20 ? "（建议≤20字）" : "");
-  el.className = "cc-count" + (n > 20 ? " warn" : "");
+function initStaticChips() {
+  rebuildMulti("hpi_cause", COMMON.cause);
+  rebuildMulti("hpi_onset", COMMON.onset);
+  rebuildMulti("hpi_care", COMMON.care);
+  rebuildMulti("hpi_status", COMMON.status);
 }
 
-/* ---- 现病史组装 ---- */
 function buildHPI() {
+  if ($("hpi").value.trim() && !confirm("现病史已有内容，重新组装将覆盖，是否继续？")) return;
   const dur = ($("cc_duration").value.trim() || "____").replace(/[，,].*$/, "");
   const sym = $("cc_symptom").value.trim() || "____";
   const cause = picked("hpi_cause")[0] || "无明显诱因";
-  const onset = picked("hpi_onset")[0] || "";
-  const assoc = picked("hpi_assoc");
-  const care = picked("hpi_care");
-  const status = picked("hpi_status");
-  let s = `患者于${dur}前${cause}${onset || "出现"}${sym}`;
+  const onset = picked("hpi_onset")[0] || "出现";
+  const assoc = picked("hpi_assoc"), care = picked("hpi_care"), status = picked("hpi_status");
+  let s = `患者于${dur}前${cause}${onset}${sym}`;
   if (assoc.length) s += "，" + assoc.join("，");
   s += "。";
   if (care.length) s += care.join("，") + "。";
@@ -409,139 +375,117 @@ function buildHPI() {
   saveDraft();
 }
 
-/* ---- 体格检查 ---- */
-$("examRows").innerHTML = EXAM.map(e =>
-  `<div class="exam-row"><span>${e.label}</span>
-   <textarea id="ex_${e.key}" rows="2">${e.def}</textarea></div>`).join("");
+/* —— 查体联合生成 —— */
+let examDirty = false;
+["ex_heart","ex_lung","ex_abdomen","ex_limb"].forEach(id =>
+  $(id).addEventListener("input", () => { examDirty = true; saveDraft(); }));
 
-function applyExam(k, i, btn) {
-  const e = TEMPLATES[k].exam[i];
-  const ta = $("ex_" + e.sys);
-  const def = EXAM.find(x => x.key === e.sys).def;
-  ta.value = (ta.value.trim() === def || !ta.value.trim())
-    ? e.text
-    : ta.value.trim().replace(/。$/, "；") + e.text;
-  btn.style.background = "#e4f6ed"; btn.style.borderColor = "var(--on)";
+function genExam() {
+  if (examDirty && (val("ex_heart") || val("ex_lung") || val("ex_abdomen") || val("ex_limb"))
+      && !confirm("查体已手动修改，重新生成将覆盖，是否继续？")) return;
+  const sel = selectedKeys().map(k => COND[k]);
+  const borders = [], murmurs = [], lung = [], abdomen = [], limb = [];
+  let rhythm = null;
+  sel.forEach(c => {
+    const h = c.heart || {};
+    if (h.border) borders.push(h.border);
+    if (h.rhythm) rhythm = h.rhythm;
+    if (h.murmur) murmurs.push(h.murmur);
+    if (c.lung) lung.push(c.lung);
+    if (c.abdomen) abdomen.push(c.abdomen);
+    if (c.limb) limb.push(c.limb);
+  });
+  const hp = ["心前区无异常隆起"];
+  hp.push(borders.length ? uniq(borders).join("、") : "心界不大");
+  hp.push("心率__次/分");
+  hp.push(rhythm || "律齐");
+  hp.push(murmurs.length ? uniq(murmurs).join("；") : "各瓣膜听诊区未闻及病理性杂音");
+  $("ex_heart").value = hp.join("，") + "。";
+  $("ex_lung").value = lung.length ? uniq(lung).join("；") + "。" : NORMAL.lung;
+  $("ex_abdomen").value = abdomen.length ? uniq(abdomen).join("；") + "。" : NORMAL.abdomen;
+  $("ex_limb").value = limb.length ? uniq(limb).join("；") + "。" : NORMAL.limb;
+  examDirty = false;
   saveDraft();
 }
 
-/* ---- 生成输出 ---- */
-let sheetGenerated = false, sheetEdited = false;
-function markEdited() { sheetEdited = true; }
-
-function render() {
-  if (sheetGenerated && sheetEdited &&
-      !confirm("预览内容已手动修改，重新生成将覆盖这些修改，是否继续？")) return;
+/* —— 初步诊断 —— */
+function buildDx() {
+  if ($("dx_text").value.trim() && !confirm("初步诊断已有内容，重新生成将覆盖，是否继续？")) return;
+  const list = selectedKeys().map(k => COND[k].dx);
+  $("dx_text").value = list.map((d, i) => `${i + 1}. ${d}`).join("\n");
   saveDraft();
-  const v = id => esc($(id).value.trim());
-
-  const seg = (title, body) => `
-    <div class="seg">
-      <div class="seg-head">${title}
-        <button class="copy-btn" contenteditable="false" onclick="copySeg(this)">复制</button>
-      </div>
-      <div class="seg-body">${body}</div>
-    </div>`;
-
-  const head = [v("g_name") && "姓名：" + v("g_name"), $("g_sex").value && "性别：" + v("g_sex"),
-    v("g_age") && "年龄：" + v("g_age") + "岁", "病种：" + TEMPLATES[currentDisease].label]
-    .filter(Boolean).join("　");
-
-  let html = `<h2 class="doc-title">入院信息采集单</h2><hr class="rule">`;
-  html += seg("患者", `<p>${head}</p>`);
-  html += seg("主诉", `<p>${v("cc_text") || "　"}</p>`);
-  html += seg("现病史", `<p>${esc($("hpi").value.trim()).replace(/\n/g, "<br>") || "　"}</p>`);
-
-  const vitals = `T ${v("v_t")||"__"}℃，P ${v("v_p")||"__"}次/分，R ${v("v_r")||"__"}次/分，BP ${v("v_bp")||"__/__"}mmHg`
-    + (v("v_spo2") ? `，SpO₂ ${v("v_spo2")}%` : "") + "。";
-  const examText = EXAM.map(e => esc($("ex_" + e.key).value.trim())).filter(Boolean).join("");
-  html += seg("体格检查", `<p>${vitals}${examText}</p>`);
-
-  const dxList = picked("dxChips")
-    .concat($("dx_extra").value.split("\n").map(s => s.trim()).filter(Boolean));
-  if (dxList.length) {
-    html += seg("初步诊断", `<p>${dxList.map((d, i) => `${i + 1}.${esc(d)}`).join("　")}</p>`);
-  }
-
-  html += `<p class="disclaimer" style="font-size:12px;color:#666;border-top:1px dashed #aaa;padding-top:6px;">
-    本采集单为辅助生成草稿，复制到内部系统后须由经治医师核对修改；注意补全 ____ 占位内容。</p>`;
-
-  const sheet = $("sheet");
-  sheet.innerHTML = html;
-  sheet.contentEditable = "true";
-  sheetGenerated = true; sheetEdited = false;
 }
 
-/* ---- 复制 ---- */
+/* —— 查体整段文本 —— */
+const val = id => $(id).value.trim();
+function vitalsLine() {
+  let s = `T ${val("v_t")||"__"}℃，P ${val("v_p")||"__"}次/分，R ${val("v_r")||"__"}次/分，BP ${val("v_bp")||"__/__"}mmHg`;
+  if (val("v_spo2")) s += `，SpO₂ ${val("v_spo2")}%`;
+  return s + "。";
+}
+function examFull() {
+  return [vitalsLine(), val("ex_heart"), val("ex_lung"), val("ex_abdomen"), val("ex_limb")].filter(Boolean).join("");
+}
+
+/* —— 复制 —— */
 async function copyText(t) {
   try { await navigator.clipboard.writeText(t); }
   catch (e) {
     const ta = document.createElement("textarea");
-    ta.value = t; document.body.appendChild(ta);
-    ta.select(); document.execCommand("copy"); ta.remove();
+    ta.value = t; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); ta.remove();
   }
 }
 function flash(btn) {
   const old = btn.textContent;
-  btn.textContent = "已复制✓";
-  setTimeout(() => { btn.textContent = old; }, 1200);
+  btn.textContent = "已复制✓"; btn.classList.add("done");
+  setTimeout(() => { btn.textContent = old; btn.classList.remove("done"); }, 1200);
 }
-function copySeg(btn) {
-  const segEl = btn.closest(".seg");
-  const title = segEl.querySelector(".seg-head").childNodes[0].textContent.trim();
-  const body = segEl.querySelector(".seg-body").innerText.trim();
-  copyText(title === "患者" ? body : `${title}：${body}`);
-  flash(btn);
-}
+function copyField(id, btn) { copyText($(id).value.trim()); flash(btn); }
+function copyExam(btn) { copyText(examFull()); flash(btn); }
 function copyAll(btn) {
-  if (!sheetGenerated) render();
-  if (!sheetGenerated) return;
-  const parts = [...document.querySelectorAll("#sheet .seg")].map(s => {
-    const title = s.querySelector(".seg-head").childNodes[0].textContent.trim();
-    const body = s.querySelector(".seg-body").innerText.trim();
-    return title === "患者" ? body : `${title}：${body}`;
-  });
-  copyText(parts.join("\n"));
-  flash(btn);
+  const parts = [];
+  if (val("cc_text")) parts.push("主诉：" + val("cc_text"));
+  if (val("hpi")) parts.push("现病史：" + val("hpi"));
+  parts.push("查体：" + examFull());
+  if (val("dx_text")) parts.push("初步诊断：\n" + val("dx_text"));
+  copyText(parts.join("\n\n")); flash(btn);
 }
 
-function ensureRendered() { if (!sheetGenerated) render(); }
-function doPrint() { ensureRendered(); window.print(); }
-
-/* ---- 草稿 ---- */
-const DRAFT_KEY = "cardiacIntakeDraftV2";
-const TEXT_IDS = ["g_name","g_sex","g_age","cc_symptom","cc_duration","cc_text","hpi",
-  "v_t","v_p","v_r","v_bp","v_spo2","dx_extra"].concat(EXAM.map(e => "ex_" + e.key));
+/* —— 草稿 —— */
+const DRAFT_KEY = "cardiacIntakeV3";
+const TEXT_IDS = ["cc_symptom","cc_duration","cc_text","hpi","v_t","v_p","v_r","v_bp","v_spo2",
+  "ex_heart","ex_lung","ex_abdomen","ex_limb","dx_text"];
+const CHIP_GROUPS = ["hpi_cause","hpi_onset","hpi_assoc","hpi_care","hpi_status"];
 
 function saveDraft() {
-  const d = { disease: currentDisease, fields: {},
-    chips: {}, dx: picked("dxChips") };
+  const d = { conds: selectedKeys(), fields: {}, chips: {} };
   TEXT_IDS.forEach(id => d.fields[id] = $(id).value);
-  ["hpi_cause","hpi_onset","hpi_assoc","hpi_care","hpi_status"].forEach(g => d.chips[g] = picked(g));
+  CHIP_GROUPS.forEach(g => d.chips[g] = picked(g));
   localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
 }
 function loadDraft() {
-  try {
-    const d = JSON.parse(localStorage.getItem(DRAFT_KEY)); if (!d) return;
-    if (d.disease && TEMPLATES[d.disease]) switchDisease(d.disease); else switchDisease("hf");
-    TEXT_IDS.forEach(id => { if (d.fields[id] != null && $(id)) $(id).value = d.fields[id]; });
+  initStaticChips();
+  let d; try { d = JSON.parse(localStorage.getItem(DRAFT_KEY)); } catch (e) {}
+  if (d) {
+    (d.conds || []).forEach(k => { const c = $("cd_" + k); if (c) c.checked = true; });
+  }
+  rebuildCcChips();
+  rebuildMulti("hpi_assoc", uniq(selectedKeys().flatMap(k => COND[k].assoc || [])).concat(COMMON.assoc));
+  if (d) {
+    TEXT_IDS.forEach(id => { if (d.fields?.[id] != null) $(id).value = d.fields[id]; });
     Object.entries(d.chips || {}).forEach(([g, arr]) =>
       [...document.querySelectorAll(`#${g} button`)].forEach(b => {
         if (arr.includes(b.textContent)) b.classList.add("on"); }));
-    (d.dx || []).forEach(t => [...document.querySelectorAll("#dxChips button")]
-      .forEach(b => { if (b.textContent === t) b.classList.add("on"); }));
-  } catch (e) { switchDisease("hf"); }
+  }
+  ccCount();
 }
 function clearAll() {
   if (!confirm("确定清空所有已填写内容？")) return;
   localStorage.removeItem(DRAFT_KEY); location.reload();
 }
 
-$("formPanel").addEventListener("change", saveDraft);
-$("formPanel").addEventListener("input", saveDraft);
-$("sheet").addEventListener("input", markEdited);
-if (localStorage.getItem(DRAFT_KEY)) loadDraft(); else switchDisease("hf");
-ccCount();
+loadDraft();
 </script>
 </body>
 </html>
