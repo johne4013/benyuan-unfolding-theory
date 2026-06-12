@@ -117,7 +117,6 @@ def _get_client():
 def _call_llm(system: str, user: str, model: str = DEFAULT_MODEL) -> str:
     """调用 LLM，返回原始文本响应"""
     client = _get_client()
-    import anthropic
     message = client.messages.create(
         model=model,
         max_tokens=MAX_TOKENS,
