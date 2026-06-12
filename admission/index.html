@@ -123,6 +123,10 @@
     <div class="chips multi single" id="hpi_onset"></div>
     <div class="group-label">伴随症状（多选）</div>
     <div class="chips multi" id="hpi_assoc"></div>
+    <div class="group-label">阴性症状（多选，鉴别用）</div>
+    <div class="chips multi" id="hpi_neg"></div>
+    <div class="group-label">病情演变（多选，不选则按“加重时间”自动生成）</div>
+    <div class="chips multi" id="hpi_evo"></div>
     <div class="group-label">院外诊治经过（多选）</div>
     <div class="chips multi" id="hpi_care"></div>
     <div class="group-label">一般情况（多选，不选用默认）</div>
@@ -160,23 +164,14 @@
     </div>
   </fieldset>
 
-  <fieldset>
-    <legend>⑤ 初步诊断（按所选病种自动列出）</legend>
-    <div class="out-head" style="margin-top:0;">
-      <span class="lbl">初步诊断</span>
-      <button class="copy-btn" onclick="copyField('dx_text', this)">复制</button>
-      <button class="gen-btn" style="margin:0 0 0 6px;padding:3px 12px;" onclick="buildDx()">⟳ 生成</button>
-    </div>
-    <textarea id="dx_text" rows="4" placeholder="点「生成」按所选病种列出，可手动增删"></textarea>
-  </fieldset>
-
 </div>
 
 <script>
 /* =====================================================================
    病种知识库：科室维护人员仅需修改本区
    每条病变可贡献：cc(主诉症状) / assoc(现病史伴随) / heart{border,rhythm,murmur}
-   / lung / abdomen / limb（查体片段，多病变自动合并） / dx(诊断)
+   / lung / abdomen / limb（查体片段，多病变自动合并）
+   dx 字段当前未使用，保留备用
 ===================================================================== */
 const COMMON_SYMPTOMS = ["胸闷","胸痛","心悸","气促","活动后气促","夜间阵发性呼吸困难",
   "双下肢水肿","晕厥","发热","乏力","咳嗽、咳痰","咯血"];
@@ -184,7 +179,13 @@ const COMMON_SYMPTOMS = ["胸闷","胸痛","心悸","气促","活动后气促","
 const COMMON = {
   cause: ["无明显诱因","劳累后","受凉感冒后","情绪激动后","饱餐后"],
   onset: ["逐渐出现","突发","反复出现"],
-  assoc: ["伴心悸","伴气促","伴胸痛","伴出汗","无发热","无晕厥"],
+  assoc: ["伴心悸","伴气促","伴胸痛","伴出汗"],
+  neg: ["无发热","无胸痛","无心悸","无气促","无咯血","无晕厥及黑矇","无夜间阵发性呼吸困难",
+    "无双下肢水肿","无恶心、呕吐","无腹痛、腹泻","无头晕、头痛","无意识障碍","无肢体活动障碍",
+    "无大汗","无声音嘶哑","无咳嗽、咳痰","无盗汗、消瘦"],
+  evo: ["上述症状反复发作","症状程度较前逐渐加重","发作较前频繁，持续时间延长",
+    "活动耐量进行性下降","症状于活动后明显，休息后可缓解","出现夜间不能平卧",
+    "症状持续不缓解","院外治疗效果欠佳","症状时轻时重"],
   care: ["未予正规诊治","曾就诊于当地医院","行心脏彩超提示“____”","行主动脉CTA提示“____”",
     "行冠状动脉造影提示“____”","经治疗后症状稍缓解","经治疗后症状无明显缓解",
     "本次为进一步诊治，门诊以“____”收入我科"],
@@ -355,20 +356,36 @@ const picked = id => [...document.querySelectorAll(`#${id} button.on`)].map(b =>
 function initStaticChips() {
   rebuildMulti("hpi_cause", COMMON.cause);
   rebuildMulti("hpi_onset", COMMON.onset);
+  rebuildMulti("hpi_neg", COMMON.neg);
+  rebuildMulti("hpi_evo", COMMON.evo);
   rebuildMulti("hpi_care", COMMON.care);
   rebuildMulti("hpi_status", COMMON.status);
 }
 
 function buildHPI() {
   if ($("hpi").value.trim() && !confirm("现病史已有内容，重新组装将覆盖，是否继续？")) return;
-  const dur = ($("cc_duration").value.trim() || "____").replace(/[，,].*$/, "");
+  const durRaw = $("cc_duration").value.trim();
+  const dur = (durRaw || "____").replace(/[，,].*$/, "");
   const sym = $("cc_symptom").value.trim() || "____";
   const cause = picked("hpi_cause")[0] || "无明显诱因";
   const onset = picked("hpi_onset")[0] || "出现";
-  const assoc = picked("hpi_assoc"), care = picked("hpi_care"), status = picked("hpi_status");
+  const assoc = picked("hpi_assoc"), neg = picked("hpi_neg"),
+        care = picked("hpi_care"), status = picked("hpi_status");
+  /* 起病 + 伴随 */
   let s = `患者于${dur}前${cause}${onset}${sym}`;
   if (assoc.length) s += "，" + assoc.join("，");
   s += "。";
+  /* 阴性症状 */
+  if (neg.length) s += "病程中" + neg.join("、") + "。";
+  /* 病情演变：未点选时按“加重时间”自动生成 */
+  let evo = picked("hpi_evo").join("，");
+  if (!evo) {
+    const tail = (durRaw.split(/[，,]/)[1] || "").trim();
+    const m = tail.match(/加重(.+)/);
+    if (m) evo = `${m[1]}前上述症状明显加重`;
+  }
+  if (evo) s += evo + "。";
+  /* 院外诊治 + 一般情况 */
   if (care.length) s += care.join("，") + "。";
   s += (status.length ? status.join("，") : "发病以来精神、饮食、睡眠可，大小便正常，体重无明显变化") + "。";
   $("hpi").value = s;
@@ -408,14 +425,6 @@ function genExam() {
   saveDraft();
 }
 
-/* —— 初步诊断 —— */
-function buildDx() {
-  if ($("dx_text").value.trim() && !confirm("初步诊断已有内容，重新生成将覆盖，是否继续？")) return;
-  const list = selectedKeys().map(k => COND[k].dx);
-  $("dx_text").value = list.map((d, i) => `${i + 1}. ${d}`).join("\n");
-  saveDraft();
-}
-
 /* —— 查体整段文本 —— */
 const val = id => $(id).value.trim();
 function vitalsLine() {
@@ -448,15 +457,14 @@ function copyAll(btn) {
   if (val("cc_text")) parts.push("主诉：" + val("cc_text"));
   if (val("hpi")) parts.push("现病史：" + val("hpi"));
   parts.push("查体：" + examFull());
-  if (val("dx_text")) parts.push("初步诊断：\n" + val("dx_text"));
   copyText(parts.join("\n\n")); flash(btn);
 }
 
 /* —— 草稿 —— */
 const DRAFT_KEY = "cardiacIntakeV3";
 const TEXT_IDS = ["cc_symptom","cc_duration","cc_text","hpi","v_t","v_p","v_r","v_bp","v_spo2",
-  "ex_heart","ex_lung","ex_abdomen","ex_limb","dx_text"];
-const CHIP_GROUPS = ["hpi_cause","hpi_onset","hpi_assoc","hpi_care","hpi_status"];
+  "ex_heart","ex_lung","ex_abdomen","ex_limb"];
+const CHIP_GROUPS = ["hpi_cause","hpi_onset","hpi_assoc","hpi_neg","hpi_evo","hpi_care","hpi_status"];
 
 function saveDraft() {
   const d = { conds: selectedKeys(), fields: {}, chips: {} };
