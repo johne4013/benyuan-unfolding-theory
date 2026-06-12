@@ -141,25 +141,18 @@
 
   <fieldset>
     <legend>④ 体格检查（心 / 肺 / 腹部 / 下肢）</legend>
-    <div class="vitals">
-      <label class="field">T℃ <input id="v_t" value="36.5"></label>
-      <label class="field">P次/分 <input id="v_p" value="78"></label>
-      <label class="field">R次/分 <input id="v_r" value="18"></label>
-      <label class="field">BP mmHg <input id="v_bp" placeholder="120/75"></label>
-      <label class="field">SpO₂% <input id="v_spo2"></label>
-    </div>
     <button class="gen-btn" onclick="genExam()">⟳ 按所选病种联合生成查体</button>
-    <p class="tip">默认正常，生成后按实际修改；多个瓣膜病变的杂音会自动合并到“心脏”一栏。</p>
+    <p class="tip">默认正常，生成后按实际修改；多个瓣膜病变的杂音会自动合并到“心脏”一栏；主诉/现病史中选了水肿，下肢会自动带出。</p>
     <div class="ex-label">心脏</div>
     <textarea id="ex_heart" rows="2"></textarea>
     <div class="ex-label">肺部</div>
     <textarea id="ex_lung" rows="2"></textarea>
-    <div class="ex-label">腹部</div>
+    <div class="ex-label"><label style="cursor:pointer;"><input type="checkbox" id="inc_abdomen" onchange="saveDraft()"> 腹部（勾选后纳入查体，默认不纳入）</label></div>
     <textarea id="ex_abdomen" rows="2"></textarea>
     <div class="ex-label">下肢</div>
     <textarea id="ex_limb" rows="2"></textarea>
     <div class="out-head">
-      <span class="lbl">查体（含生命体征，整段）</span>
+      <span class="lbl">查体（整段）</span>
       <button class="copy-btn" onclick="copyExam(this)">复制查体</button>
     </div>
   </fieldset>
@@ -412,6 +405,11 @@ function genExam() {
     if (c.abdomen) abdomen.push(c.abdomen);
     if (c.limb) limb.push(c.limb);
   });
+  /* 主诉/现病史里选了水肿 → 下肢自动带出 */
+  const symText = $("cc_symptom").value + " " + picked("hpi_assoc").join(" ");
+  if (/水肿/.test(symText) && !limb.some(x => x.includes("水肿"))) limb.push("双下肢凹陷性水肿");
+  /* 腹部有阳性发现时自动勾选纳入 */
+  if (abdomen.length) $("inc_abdomen").checked = true;
   const hp = ["心前区无异常隆起"];
   hp.push(borders.length ? uniq(borders).join("、") : "心界不大");
   hp.push("心率__次/分");
@@ -427,13 +425,11 @@ function genExam() {
 
 /* —— 查体整段文本 —— */
 const val = id => $(id).value.trim();
-function vitalsLine() {
-  let s = `T ${val("v_t")||"__"}℃，P ${val("v_p")||"__"}次/分，R ${val("v_r")||"__"}次/分，BP ${val("v_bp")||"__/__"}mmHg`;
-  if (val("v_spo2")) s += `，SpO₂ ${val("v_spo2")}%`;
-  return s + "。";
-}
 function examFull() {
-  return [vitalsLine(), val("ex_heart"), val("ex_lung"), val("ex_abdomen"), val("ex_limb")].filter(Boolean).join("");
+  const parts = [val("ex_heart"), val("ex_lung")];
+  if ($("inc_abdomen").checked) parts.push(val("ex_abdomen"));
+  parts.push(val("ex_limb"));
+  return parts.filter(Boolean).join("");
 }
 
 /* —— 复制 —— */
@@ -462,12 +458,12 @@ function copyAll(btn) {
 
 /* —— 草稿 —— */
 const DRAFT_KEY = "cardiacIntakeV3";
-const TEXT_IDS = ["cc_symptom","cc_duration","cc_text","hpi","v_t","v_p","v_r","v_bp","v_spo2",
+const TEXT_IDS = ["cc_symptom","cc_duration","cc_text","hpi",
   "ex_heart","ex_lung","ex_abdomen","ex_limb"];
 const CHIP_GROUPS = ["hpi_cause","hpi_onset","hpi_assoc","hpi_neg","hpi_evo","hpi_care","hpi_status"];
 
 function saveDraft() {
-  const d = { conds: selectedKeys(), fields: {}, chips: {} };
+  const d = { conds: selectedKeys(), fields: {}, chips: {}, incAbdomen: $("inc_abdomen").checked };
   TEXT_IDS.forEach(id => d.fields[id] = $(id).value);
   CHIP_GROUPS.forEach(g => d.chips[g] = picked(g));
   localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
@@ -482,6 +478,7 @@ function loadDraft() {
   rebuildMulti("hpi_assoc", uniq(selectedKeys().flatMap(k => COND[k].assoc || [])).concat(COMMON.assoc));
   if (d) {
     TEXT_IDS.forEach(id => { if (d.fields?.[id] != null) $(id).value = d.fields[id]; });
+    $("inc_abdomen").checked = !!d.incAbdomen;
     Object.entries(d.chips || {}).forEach(([g, arr]) =>
       [...document.querySelectorAll(`#${g} button`)].forEach(b => {
         if (arr.includes(b.textContent)) b.classList.add("on"); }));
