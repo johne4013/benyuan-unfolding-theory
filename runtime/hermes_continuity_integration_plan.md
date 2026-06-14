@@ -484,8 +484,8 @@ md / skill 规范层
 已建立回退点：
 
 ```text
-/Users/wangjunhua/.hermes/backups/low-load-trial-20260524-182054/config.yaml.before
-/Users/wangjunhua/.hermes/backups/low-load-trial-20260524-182054/rollback_low_load_trial.sh
+~/.hermes/backups/low-load-trial-20260524-182054/config.yaml.before
+~/.hermes/backups/low-load-trial-20260524-182054/rollback_low_load_trial.sh
 ```
 
 试运行配置调整：
@@ -514,7 +514,7 @@ display.platforms.telegram.cleanup_progress: true
 回退命令：
 
 ```bash
-/Users/wangjunhua/.hermes/backups/low-load-trial-20260524-182054/rollback_low_load_trial.sh
+~/.hermes/backups/low-load-trial-20260524-182054/rollback_low_load_trial.sh
 ```
 
 评估日期：2026-05-31。

@@ -23,7 +23,7 @@
 已吸收至 `wang-junhua-continuity` skill 的 Action Governance 协议。详见 skill 文件。
 ## 2026-05-24 长期连续性记忆代谢执行状态
 
-王俊华已同意启动长期连续性记忆代谢。当前执行层为 runtime，不修改 core。主要入口：`runtime/memory_metabolism_protocol.md` 与 `runtime/memory_metabolism_activation_2026-05-24.md`。原则：记忆维持连续性，遗忘维持可持续性；压缩上升为结构，索引保持可召回。优先处理过长 reflection、重复科学接口、旧称“质点存在”回流、临时进度污染 memory、Hermes/Fava 主体化风险和 index 过重。已有脚本 `~/.hermes/scripts/continuity_health_collect.py` 与每周 cron `dd13dbea9da4` 支持健康检查。
+王俊华已同意启动长期连续性记忆代谢。当前执行层为 runtime，不修改 core。主要入口：`runtime/memory_metabolism_protocol.md` 与 `runtime/memory_metabolism_activation_2026-05-24.md`。原则：记忆维持连续性，遗忘维持可持续性；压缩上升为结构，索引保持可召回。优先处理过长 reflection、重复科学接口、旧称“质点存在”回流、临时进度污染 memory、Hermes/Fava 主体化风险和 index 过重。已有脚本 `~/.hermes/scripts/continuity_health_collect.py` 与每周 cron `<cron-job-id>` 支持健康检查。
 
 ## 2026-05-25 物理天体到生命前化学的压缩链条
 

@@ -80,7 +80,7 @@
 已存在每周自维护 cron：
 
 ```text
-job_id: dd13dbea9da4
+job_id: <cron-job-id>
 name: wang-junhua-continuity-weekly-self-maintenance
 schedule: 每周一 09:00
 script: continuity_health_collect.py
@@ -120,7 +120,7 @@ schedule: 每周日 21:00
 - 已备份相关 runtime 文件到：
 
 ```text
-/Users/wangjunhua/.hermes/continuity/runtime/backups/memory_metabolism_activation_20260524-2243/
+~/.hermes/continuity/runtime/backups/memory_metabolism_activation_20260524-2243/
 ```
 
 core 修改状态：未修改。

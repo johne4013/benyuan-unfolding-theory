@@ -90,7 +90,7 @@ benyuan-unfolding-theory/
     └── test_hope_tension_collector.py  # 张力采集器 4项测试
 ```
 
-运行测试：`python3 -m pytest tests/ -v`（38项，全部通过）
+运行测试：`python3 -m pytest tests/ -v`（59项，全部通过）
 
 ### 分层说明 / Layer Semantics
 
