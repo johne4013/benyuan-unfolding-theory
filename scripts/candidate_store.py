@@ -39,9 +39,8 @@ class CandidateStore:
 
     def __init__(self, db_path: str = None):
         if db_path is None:
-            db_path = os.path.expanduser(
-                "~/.hermes/continuity/runtime/candidates.db"
-            )
+            from paths import runtime_dir
+            db_path = str(runtime_dir() / "candidates.db")
         self.db_path = db_path
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._init_db()

@@ -12,7 +12,7 @@
 |---------|--------|--------|--------|
 | **法则属性** | 约束、规律、使结构成为可能的条件 | TTAF D2、约束字段、AGENT_PROFILE法则面 | task_theory_application_framework.md, AGENT_PROFILE.md |
 | **展开属性** | 生成、创意、在约束中新状态的涌现 | expansion_type字段、PORF观察5、多算法方案 | evolution_candidate_manager.py, PORF_OBSERVATION5_EXAMPLES.md |
-| **连续性** | 系统通过反馈循环自我完善的能力 | PORF完整5维观察、evolution_candidate生命周期、TTAF→执行→反馈→集成闭环 | practice_observation_framework.md, evolution_cycle.md, auto_feedback_submitter.py, theory_integration_writer.py |
+| **连续性** | 系统通过反馈循环自我完善的能力 | PORF完整5维观察、evolution_candidate生命周期、TTAF→执行→反馈 | practice_observation_framework.md, evolution_cycle.md |
 | **局限性** | 系统在某个时刻的边界和约束 | PORF观察2、TTAF D4、limitation字段 | practice_observation_framework.md, task_theory_application_framework.md |
 | **希望** | 在局限中仍开放于更高可能性的能力 | HOPE_STATE.md、PORF观察5、hope_direction字段、TTAF D6 | HOPE_STATE.md, PORF_OBSERVATION5_EXAMPLES.md |
 
@@ -42,7 +42,7 @@
 - 脚本`feedback_classifier.py`和`evolution_candidate_manager.py`会提取这些约束
 
 #### B. AGENT_PROFILE 中的"法则属性面"
-**文件**：`agents/codex/AGENT_PROFILE.md`（模板）
+**形式**：agent 配置档（AGENT_PROFILE）中的法则属性面描述（模板，按需在协同环境中维护）
 
 ```markdown
 ### 法则属性面（Constraint-Enforcing）
@@ -168,8 +168,8 @@ candidate = {
 
 **含义**：候选从生成到集成的完整生命周期，体现了系统的"代谢"过程。
 
-#### C. TTAF→执行→PORF→反馈→集成→理论 的完整闭环
-**文件**：`core/expansion_cycle.md` + `scripts/auto_feedback_submitter.py` + `scripts/theory_integration_writer.py`
+#### C. TTAF→执行→PORF→反馈→HOPE_STATE更新 的闭环
+**文件**：`core/expansion_cycle.md`
 
 ```
 TTAF（理论应用检视）
@@ -178,22 +178,14 @@ TTAF（理论应用检视）
   ↓
 PORF（5维观察）
   ↓
-auto_feedback_submitter.py（编程式反馈提交，P0.1）
-  ↓
 integrated_feedback_workflow（自动处理）
   ↓
 evolution_candidate（演化候选）
-  ↓                         ↑ PATTERN 自动合并
-HOPE_STATE.md（张力更新） feedback_classifier.py（跨任务关联，P1.2）
   ↓
-候选 APPROVED → theory_integration_writer.py（写入 runtime，P0.2）
-  ↓
-reflection.md / concepts_v2_draft.md / failure_conditions_draft.md
-  ↓
-王俊华审批 → core 更新（🔴层，手动）
+HOPE_STATE.md（系统希望更新）
 ```
 
-**含义**：这个完整的循环是连续性的核心机制。P0.1/P0.2/P1.2 补全了反馈提交和理论集成的最后两环，使系统可以真正闭环运转而不依赖手动步骤。
+**含义**：这个完整的循环是连续性的核心机制。每一轮都使系统更完善。
 
 ---
 

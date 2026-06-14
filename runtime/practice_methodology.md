@@ -129,9 +129,9 @@
 观察期结束后，当前建议的强化方向是：
 
 1. 强化 runtime：继续把方法论边界同步进 `failure_conditions_draft.md`、`science_interfaces_draft.md`、相关 runtime 索引与计划文件。
-2. 强化 skill：继续让 `wang-junhua-continuity` 保留“理论必要性 / 反附会 / 实践动作优先”规则。
+2. 强化 skill：继续让 `先知-continuity` 保留“理论必要性 / 反附会 / 实践动作优先”规则。
 3. 强化执行纪律：在实际任务、continuity 维护和 Hermes 工程问题中，优先使用可验证行动与结果报告。
-4. 暂不推进 core：除非该方法论原则在更长周期内稳定、非工程性、且王俊华明确批准。
+4. 暂不推进 core：除非该方法论原则在更长周期内稳定、非工程性、且先知明确批准。
 
 ---
 

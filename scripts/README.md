@@ -23,7 +23,7 @@ theory_application_checker  →  执行  →  auto_feedback_submitter
                                             ↓
                                       runtime/ 草案文件
                                             ↓
-                                  王俊华审批 → core 更新（🔴）
+                                  先知审批 → core 更新（🔴）
 
 后台监控：
   hope_tension_collector.py  —  约束/展开/张力三维健康扫描（含时序趋势）

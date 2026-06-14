@@ -37,9 +37,8 @@ class AutoFeedbackSubmitter:
         if feedbacks_dir:
             self.feedbacks_dir = Path(feedbacks_dir).expanduser()
         else:
-            self.feedbacks_dir = (
-                Path("~/.hermes/continuity/runtime/practice_feedbacks").expanduser()
-            )
+            from paths import runtime_dir
+            self.feedbacks_dir = runtime_dir() / "practice_feedbacks"
         self.feedbacks_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
@@ -140,11 +139,14 @@ class AutoFeedbackSubmitter:
             try:
                 with open(f, "r", encoding="utf-8") as fp:
                     data = json.load(fp)
+                if not isinstance(data, dict):
+                    results.append({"file": f.name, "error": "结构无效"})
+                    continue
                 results.append({
                     "file": f.name,
-                    "task_id": data.get("task_id"),
-                    "task_name": data.get("task_name"),
-                    "submitted_at": data.get("submitted_at"),
+                    "task_id": data.get("task_id") or "<missing-task-id>",
+                    "task_name": data.get("task_name") or "<missing-task-name>",
+                    "submitted_at": data.get("submitted_at") or "<missing-date>",
                 })
             except (json.JSONDecodeError, OSError):
                 results.append({"file": f.name, "error": "无法读取"})
@@ -242,7 +244,9 @@ if __name__ == "__main__":
                 if "error" in fb:
                     print(f"  {fb['file']} [读取失败]")
                 else:
-                    print(f"  {fb['task_id']} | {fb['task_name']} | {fb['submitted_at'][:10]}")
+                    date = fb.get('submitted_at', '')
+                    date = date[:10] if date and not date.startswith('<missing') else date
+                    print(f"  {fb['task_id']} | {fb['task_name']} | {date}")
 
     elif sys.argv[1] == "--quick" and len(sys.argv) >= 5:
         task_name = sys.argv[2]

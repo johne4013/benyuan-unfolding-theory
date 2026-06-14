@@ -146,12 +146,15 @@ class FeedbackClassifier:
 
         return '\n'.join(parts)
 
-    def save_candidate(self, candidate, output_dir='~/.hermes/continuity/runtime/evolution_candidates'):
+    def save_candidate(self, candidate, output_dir=None):
         """保存理论演化候选"""
 
         if not candidate:
             return None
 
+        if output_dir is None:
+            from paths import runtime_dir
+            output_dir = runtime_dir() / "evolution_candidates"
         output_path = Path(output_dir).expanduser()
         output_path.mkdir(parents=True, exist_ok=True)
 

@@ -31,8 +31,8 @@ def test_self_alignment_passes_with_hope_and_index(tmp_path):
     result = scanner.self_alignment_check()
     # HOPE_STATE.md and index.md exist, so those checks pass
     checks_by_name = {c["name"]: c["ok"] for c in result["checks"]}
-    assert checks_by_name.get("index.md exists") is True
-    assert checks_by_name.get("HOPE_STATE.md exists") is True
+    assert checks_by_name.get("runtime/index.md exists") is True
+    assert checks_by_name.get("runtime/HOPE_STATE.md exists") is True
 
 
 def test_scan_returns_overall(tmp_path):
