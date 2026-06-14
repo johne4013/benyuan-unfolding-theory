@@ -31,7 +31,12 @@ theory_application_checker  →  执行  →  auto_feedback_submitter
 
 认知操作工具链（新增）：
   llm_analogizer.py   —  LLM 类比与想象（类相干多方向推演，需 ANTHROPIC_API_KEY）
+
+公共模块：
+  paths.py            —  continuity 根目录统一解析（参数 > FAVA_CONTINUITY_ROOT > 仓库根 > ~/.hermes/continuity）
 ```
+
+> 依赖：核心工具链仅依赖 Python 标准库，克隆后即可运行。`llm_analogizer.py` 需 `anthropic`（见 `pyproject.toml` 的 `llm` 可选依赖）；运行测试需 `pytest`（`test` 可选依赖）。
 
 ---
 
@@ -124,6 +129,9 @@ python3 auto_feedback_submitter.py --list
 - ANOMALY → `failure_conditions_draft.md`
 - 所有类型 → `reflection.md` + `HOPE_STATE.md`（若 hope_direction 非空）
 
+> 说明：上述 `*_draft.md`、`reflection.md` 是工具链在运行时**按需生成**的候选/反思输出文件，
+> 不随公开仓库分发；首次集成时会在 `runtime/` 下自动创建。
+
 ```bash
 python3 theory_integration_writer.py integrate <candidate-id>
 python3 theory_integration_writer.py dry-run <candidate-id>     # 预览
@@ -170,9 +178,12 @@ python3 hope_tension_collector.py --json    # 同时输出 JSON
 
 **功能：** runtime 记忆代谢扫描器（只读，🟢 层）  
 **扫描维度：**
-- 文件膨胀：`reflection.md`(>100KB)、`concepts_v2_draft.md`(>80KB) 等阈值告警
-- 文件失活：`current_state.md`(>14d)、`memory.md`(>30d) 等长期未更新告警
-- 结构完整性：bootstrap/index/HOPE_STATE/memory 四大结构件存在性检查
+- 文件膨胀：`HOPE_STATE.md`、`index.md`、`theory_to_code_mapping.md` 等阈值告警
+- 文件失活：`HOPE_STATE.md`(>21d)、`index.md`(>30d) 等长期未更新告警
+- 结构完整性：bootstrap / index / HOPE_STATE / TTAF 四大结构件存在性检查
+
+> 阈值字典（`SIZE_THRESHOLDS` / `STALE_THRESHOLDS`）在 `memory_metabolism.py` 顶部定义，
+> 可按实际 runtime 文件集自行调整。
 
 ```bash
 python3 memory_metabolism.py        # 人类可读报告

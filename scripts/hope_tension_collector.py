@@ -126,7 +126,11 @@ def scan():
         "core_files_missing": core_integrity["missing"],
         "core_files_undeclared": core_integrity["undeclared"],
         "memory_kb": round(file_size_kb(os.path.join(RUNTIME, "memory.md")), 1),
-        "current_state_age_days": round(file_age_days(os.path.join(RUNTIME, "current_state.md")), 1),
+        "current_state_age_days": (
+            round(_cs_age, 1)
+            if (_cs_age := file_age_days(os.path.join(RUNTIME, "current_state.md"))) is not None
+            else None
+        ),
     }
 
     if core_age and core_age > 60:

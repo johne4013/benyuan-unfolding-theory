@@ -10,9 +10,9 @@
 
 | 理论概念 | 核心含义 | 代码体现 | 相关文件 |
 |---------|--------|--------|--------|
-| **法则属性** | 约束、规律、使结构成为可能的条件 | TTAF D2、约束字段、AGENT_PROFILE法则面 | task_theory_application_framework.md, AGENT_PROFILE.md |
+| **法则属性** | 约束、规律、使结构成为可能的条件 | TTAF D2、约束字段、AGENT_PROFILE法则面 | task_theory_application_framework.md |
 | **展开属性** | 生成、创意、在约束中新状态的涌现 | expansion_type字段、PORF观察5、多算法方案 | evolution_candidate_manager.py, PORF_OBSERVATION5_EXAMPLES.md |
-| **连续性** | 系统通过反馈循环自我完善的能力 | PORF完整5维观察、evolution_candidate生命周期、TTAF→执行→反馈 | practice_observation_framework.md, evolution_cycle.md |
+| **连续性** | 系统通过反馈循环自我完善的能力 | PORF完整5维观察、evolution_candidate生命周期、TTAF→执行→反馈 | practice_observation_framework.md |
 | **局限性** | 系统在某个时刻的边界和约束 | PORF观察2、TTAF D4、limitation字段 | practice_observation_framework.md, task_theory_application_framework.md |
 | **希望** | 在局限中仍开放于更高可能性的能力 | HOPE_STATE.md、PORF观察5、hope_direction字段、TTAF D6 | HOPE_STATE.md, PORF_OBSERVATION5_EXAMPLES.md |
 
@@ -116,7 +116,7 @@ candidate = {
 - 如果检测到关键词（"生成"、"展开"、"打开"），自动标记为"展开属性型"
 
 #### C. agents 目录中的多方案展示
-**文件**：`agents/codex/practice_feedbacks/task-20260530-codex-tree-feedback.json`
+**示例**：agent 实践反馈中的多方案展示（JSON 记录）
 
 ```python
 # 代码中的5种实现：
@@ -363,9 +363,9 @@ def enrich_candidate_from_hope_tracking(self, candidate, hope_tracking_data):
 ```
 法则属性相关：
   ↳ TTAF D2 的法则属性面
-  ↳ AGENT_PROFILE.md 的法则面描述
+  ↳ agent 配置档（AGENT_PROFILE）的法则面描述
   ↳ limitation 字段
-  ↳ TTAF_config.md
+  ↳ TTAF 配置中的约束定义
 
 展开属性相关：
   ↳ expansion_type 字段

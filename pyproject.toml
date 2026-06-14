@@ -1,0 +1,15 @@
+[project]
+name = "benyuan-unfolding-theory"
+version = "0.1.0"
+description = "本原展开论：基础理论核心 + 治理框架 + 必备任务技能，即拿即用"
+requires-python = ">=3.9"
+# 核心工具链（scripts/）仅依赖 Python 标准库，克隆后即可运行，无需安装第三方包。
+
+[project.optional-dependencies]
+# LLM 类比 / 想象工具（scripts/llm_analogizer.py）需要 Anthropic SDK 与 ANTHROPIC_API_KEY：
+llm = ["anthropic>=0.30"]
+# 运行测试需要 pytest：
+test = ["pytest>=7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
