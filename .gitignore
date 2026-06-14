@@ -27,3 +27,11 @@ Thumbs.db
 
 # Claude Code internal
 .claude/
+
+# Toolchain runtime-generated outputs (not version-controlled)
+runtime/candidates.db
+runtime/candidates.db-*
+runtime/evolution_candidates/
+runtime/task_checklists/
+runtime/practice_feedbacks/
+runtime/rest_monitor/
