@@ -14,26 +14,31 @@ import argparse
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:
+    from paths import runtime_dir as _runtime_dir
+    _PATHS_AVAILABLE = True
+except ImportError:
+    _PATHS_AVAILABLE = False
 
-RUNTIME = os.path.expanduser("~/.hermes/continuity/runtime")
+
+def _resolve_runtime(override=None):
+    if override:
+        return Path(override)
+    if _PATHS_AVAILABLE:
+        return _runtime_dir()
+    return Path("~/.hermes/continuity/runtime").expanduser()
+
 
 # File size thresholds (KB) — warn when exceeded
 SIZE_THRESHOLDS = {
-    "reflection.md": 100,
-    "concepts_v2_draft.md": 80,
-    "theory_v2_draft.md": 80,
-    "science_interfaces_draft.md": 60,
-    "memory.md": 50,
-    "unknowns_v2_draft.md": 60,
-    "failure_conditions_draft.md": 60,
+    "HOPE_STATE.md": 60,
+    "index.md": 80,
+    "theory_to_code_mapping.md": 60,
 }
 
 # Age thresholds (days) — warn when file NOT updated within this period
 STALE_THRESHOLDS = {
-    "current_state.md": 14,
-    "memory.md": 30,
     "HOPE_STATE.md": 21,
-    "reflection.md": 7,
     "index.md": 30,
 }
 
@@ -42,7 +47,7 @@ class MemoryMetabolismScanner:
     """Scans runtime memory files for size, staleness, and structural integrity."""
 
     def __init__(self, runtime_dir=None):
-        self.runtime_dir = Path(runtime_dir) if runtime_dir else Path(RUNTIME)
+        self.runtime_dir = _resolve_runtime(runtime_dir)
 
     # ------------------------------------------------------------------
     # Individual scan methods
@@ -117,16 +122,16 @@ class MemoryMetabolismScanner:
                 "ok": (core_dir / "bootstrap.md").exists(),
             },
             {
-                "name": "index.md exists",
+                "name": "runtime/index.md exists",
                 "ok": (self.runtime_dir / "index.md").exists(),
             },
             {
-                "name": "HOPE_STATE.md exists",
+                "name": "runtime/HOPE_STATE.md exists",
                 "ok": (self.runtime_dir / "HOPE_STATE.md").exists(),
             },
             {
-                "name": "memory.md exists",
-                "ok": (self.runtime_dir / "memory.md").exists(),
+                "name": "runtime/task_theory_application_framework.md exists",
+                "ok": (self.runtime_dir / "task_theory_application_framework.md").exists(),
             },
         ]
 

@@ -106,7 +106,7 @@ Hermes 执行任务时，应将任务理解为：
 不同层级对应不同权限边界。尤其：
 
 - 涉及 Hermes 配置、工具、模型、cron、技能时，应加载 `hermes-agent` skill；
-- 涉及本原展开论、continuity、core/runtime 时，应加载 `personal-continuity` 与 `theory-continuity-workflows`；
+- 涉及本原展开论、continuity、core/runtime 时，应加载 `先知-continuity` 与 `theory-continuity-workflows`；
 - 涉及 protected core 时，除非用户明确批准，否则不得写入。
 
 ### 3.2 成功标准
@@ -482,7 +482,7 @@ Hermes 是非主体性协同节点。
 
 ```text
 continuity 文件系统
-→ personal-continuity skill 试运行
+→ 先知-continuity skill 试运行
 → persona / soul 极短原则
 → cron 自维护
 → 后续再评估源码级 hook

@@ -14,7 +14,9 @@ hope_tension_collector.py — 希望=本原张力 健康扫描器
 import os, json, datetime, re, sys
 from pathlib import Path
 
-CONTINUITY = os.path.expanduser("~/.hermes/continuity")
+from paths import continuity_root
+
+CONTINUITY = str(continuity_root())
 CORE = os.path.join(CONTINUITY, "core")
 RUNTIME = os.path.join(CONTINUITY, "runtime")
 ARCHIVE = os.path.join(CONTINUITY, "archive")

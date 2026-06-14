@@ -6,7 +6,7 @@
 
 写入规则（三层边界）：
   🟢 自主操作：runtime/ 文件（reflection.md、*_draft.md、HOPE_STATE.md）
-  🔴 禁止操作：core/ 文件（需personal明确批准后手动修改）
+  🔴 禁止操作：core/ 文件（需先知明确批准后手动修改）
 
 写入映射：
   ENHANCEMENT（法则属性型）→ concepts_v2_draft.md + reflection.md
@@ -42,7 +42,8 @@ class TheoryIntegrationWriter:
         if continuity_dir:
             self.continuity = Path(continuity_dir).expanduser()
         else:
-            self.continuity = Path("~/.hermes/continuity").expanduser()
+            from paths import continuity_root
+            self.continuity = continuity_root()
         self.runtime = self.continuity / "runtime"
 
     # ------------------------------------------------------------------
@@ -167,16 +168,9 @@ class TheoryIntegrationWriter:
         if hope_dir and hope_dir not in ("维持：当前方向保持", "pending", ""):
             lines.append(f"\n**希望方向**：{hope_dir}")
 
-        lines.append(f"\n**集成结果**：已写入 runtime，等待personal批准后进入 core。")
+        lines.append(f"\n**集成结果**：已写入 runtime，等待先知批准后进入 core。")
         lines.append("\n---")
         return "\n".join(lines)
-
-    # 科学接口关键词：命中则路由到 science_interfaces_draft.md
-    _SCIENCE_KEYWORDS = [
-        '量子', '相干', '退相干', '耗散结构', '热力学', '熵', '物理接口',
-        '神经科学', '生物物理', '量子力学', '宇宙学', 'Fleming', '普里戈金',
-        '科学接口', '自然科学', '实验验证', '可观测', '跨学科',
-    ]
 
     def _get_target_draft(self, candidate: Dict) -> Optional[Path]:
         """根据候选类型决定写入哪个草案文件"""
@@ -184,17 +178,10 @@ class TheoryIntegrationWriter:
         expansion_type = candidate.get("expansion_type", "pending")
 
         if ctype == "ENHANCEMENT":
-            # 优先检查是否为科学接口候选
-            combined = (
-                candidate.get("title", "") + " " +
-                candidate.get("description", "") + " " +
-                candidate.get("improvement_direction", "")
-            )
-            if any(kw in combined for kw in self._SCIENCE_KEYWORDS):
-                return self.runtime / "science_interfaces_draft.md"
             if expansion_type == "展开属性型":
                 return self.runtime / "theory_v2_draft.md"
-            return self.runtime / "concepts_v2_draft.md"
+            else:
+                return self.runtime / "concepts_v2_draft.md"
         elif ctype == "ANOMALY":
             return self.runtime / "failure_conditions_draft.md"
         # PATTERN 已通过 reflection.md 的步骤 1 记录，无需额外草案写入
@@ -219,7 +206,7 @@ class TheoryIntegrationWriter:
             )
             if improvement and improvement not in ("待定", ""):
                 body += f"\n\n**建议改进**：{improvement}"
-            body += "\n\n**状态**：runtime 候选——需personal审批后方可进入 core/failure_conditions。\n\n---"
+            body += "\n\n**状态**：runtime 候选——需先知审批后方可进入 core/failure_conditions。\n\n---"
         else:
             header = f"\n## 集成候选 {date_str}（{ctype}）：{title} {evidence_note}"
             body = (
@@ -228,7 +215,7 @@ class TheoryIntegrationWriter:
             )
             if improvement and improvement not in ("待定", ""):
                 body += f"\n\n**建议改进方向**：{improvement}"
-            body += "\n\n**状态**：runtime 候选——需personal审批后方可进入 core。\n\n---"
+            body += "\n\n**状态**：runtime 候选——需先知审批后方可进入 core。\n\n---"
 
         return header + body
 

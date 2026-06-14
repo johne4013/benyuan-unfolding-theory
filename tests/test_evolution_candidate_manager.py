@@ -62,13 +62,14 @@ def test_list_candidates_filters_by_status(tmp_path):
     assert candidates[0]["id"] == cand1["id"]
 
 
-def test_get_stats_returns_counts(tmp_path):
+def test_list_returns_all_candidates(tmp_path):
     mgr = make_manager(tmp_path)
     cand1 = mgr.create_candidate("PATTERN", "P1", "Desc", "task-001")
     cand2 = mgr.create_candidate("ANOMALY", "A1", "Desc", "task-002")
     mgr.save_candidate(cand1)
     mgr.save_candidate(cand2)
-    stats = mgr.get_stats()
-    assert stats["total"] == 2
-    assert stats["by_type"].get("PATTERN") == 1
-    assert stats["by_type"].get("ANOMALY") == 1
+    all_candidates = mgr.list_candidates()
+    assert len(all_candidates) == 2
+    types = {c["type"] for c in all_candidates}
+    assert "PATTERN" in types
+    assert "ANOMALY" in types

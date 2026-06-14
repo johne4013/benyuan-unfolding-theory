@@ -25,7 +25,7 @@
 11. 检查是否把科学接口误当成本原证明；
 12. 检查是否把 Hermes / AI 协同节点主体化；
 13. 提出 goals / core 更新建议；
-14. core 只能在personal明确批准后慢更新；
+14. core 只能在先知明确批准后慢更新；
 15. core 更新前必须备份相关 core 文件；
 16. core 更新后必须记录到 runtime 并更新 `runtime/index.md` 并验证。
 
@@ -54,4 +54,4 @@
 2. 不自动覆盖 core；
 3. 将冲突记录到 runtime 候选层；
 4. 必要时写入 unknown 或失败条件；
-5. 等待personal明确批准后再决定是否进入 core。
+5. 等待先知明确批准后再决定是否进入 core。

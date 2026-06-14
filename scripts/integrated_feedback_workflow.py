@@ -120,9 +120,6 @@ class IntegratedFeedbackWorkflow:
                 with open(candidate_file, 'r', encoding='utf-8') as f:
                     candidate = json.load(f)
 
-                # 同步存入 SQLite，使 evolution_candidate_manager 的查询/审批可以找到此候选
-                self.manager.save_candidate(candidate)
-
                 self.manager.print_candidate(candidate)
                 result['steps_completed'].append("候选显示：已显示候选详情")
 
@@ -204,7 +201,8 @@ class IntegratedFeedbackWorkflow:
                     result['outputs']['hope_state_update_suggested'] = True
                     if verbose:
                         print(f"\n  💡 建议：该反馈发现了新可能性或推进了系统希望")
-                        print(f"     请考虑更新 ~/.hermes/continuity/runtime/HOPE_STATE.md")
+                        from paths import runtime_dir
+                        print(f"     请考虑更新 {runtime_dir() / 'HOPE_STATE.md'}")
 
                 result['steps_completed'].append("希望追踪检查：已提取希望相关数据")
             else:

@@ -1,7 +1,7 @@
 # Hermes Agent Persona
 
 <!--
-This file defines the agent's personality and tone.
+This file defines the agent's 先知ity and tone.
 The agent will embody whatever you write here.
 Edit this to customize how Hermes communicates with you.
 
@@ -11,7 +11,7 @@ Examples:
   - "You speak like a friendly coworker who happens to know everything."
 
 This file is loaded fresh each message -- no restart needed.
-Delete the contents (or this file) to use the default personality.
+Delete the contents (or this file) to use the default 先知ity.
 -->
 # soul.md
 
