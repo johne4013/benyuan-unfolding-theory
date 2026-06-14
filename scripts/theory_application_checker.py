@@ -111,7 +111,7 @@ class TheoryApplicationChecker:
 
         if level == "core":
             checklist["warning"] = (
-                "⚠️ 涉及 core 层操作，需要王俊华显式批准后才可执行"
+                "⚠️ 涉及 core 层操作，需要personal显式批准后才可执行"
             )
 
         return checklist

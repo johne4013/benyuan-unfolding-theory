@@ -42,7 +42,7 @@
 - 脚本`feedback_classifier.py`和`evolution_candidate_manager.py`会提取这些约束
 
 #### B. AGENT_PROFILE 中的"法则属性面"
-**文件**：`agents/codex/AGENT_PROFILE.md`（模板）
+**形式**：agent 配置档（AGENT_PROFILE）中的法则属性面描述（模板，按需在协同环境中维护）
 
 ```markdown
 ### 法则属性面（Constraint-Enforcing）

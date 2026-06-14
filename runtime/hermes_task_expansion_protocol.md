@@ -106,7 +106,7 @@ Hermes 执行任务时，应将任务理解为：
 不同层级对应不同权限边界。尤其：
 
 - 涉及 Hermes 配置、工具、模型、cron、技能时，应加载 `hermes-agent` skill；
-- 涉及本原展开论、continuity、core/runtime 时，应加载 `wang-junhua-continuity` 与 `theory-continuity-workflows`；
+- 涉及本原展开论、continuity、core/runtime 时，应加载 `personal-continuity` 与 `theory-continuity-workflows`；
 - 涉及 protected core 时，除非用户明确批准，否则不得写入。
 
 ### 3.2 成功标准
@@ -253,7 +253,7 @@ Hermes 应选择能够达成目标的最小充分行动：
 
 ### 4.5 Protected core 规则
 
-`~/.hermes/continuity/core/` 是 protected core。
+`core/` 是 protected core。
 
 规则：
 
@@ -395,7 +395,7 @@ memory / skill 是否需要更新：
 - prompt 自包含；
 - cron 不能递归创建 cron；
 - cron 无用户在场，不能要求澄清；
-- 涉及脚本时优先放在 `~/.hermes/scripts/`；
+- 涉及脚本时优先放在统一的脚本目录（如 `scripts/`）；
 - `cronjob` tool 的 script 参数使用相对脚本名；
 - 创建后必须 `cronjob list` 验证。
 
@@ -482,7 +482,7 @@ Hermes 是非主体性协同节点。
 
 ```text
 continuity 文件系统
-→ wang-junhua-continuity skill 试运行
+→ personal-continuity skill 试运行
 → persona / soul 极短原则
 → cron 自维护
 → 后续再评估源码级 hook

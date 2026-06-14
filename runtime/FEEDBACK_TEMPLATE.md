@@ -11,7 +11,7 @@
 
 ## 0. 理论差分（Theory Differential）
 
-**方法依据：** `runtime/practice_tempering_method_proposal_2026-06-10.md`（理论差分实践法，2026-06-10 批准生效）
+**方法依据：** 理论差分实践法（PORF 五维实践观察 + 反馈代谢）
 
 **事前差分申报（任务开始前填写，与 TTAF 检视清单同步）：**
 - 理论让我做出了什么**不同于默认做法**的选择：[描述；填"无差分"完全合法，照常执行]
@@ -221,7 +221,7 @@ Hermes 在这个任务中的表现如何：
 ### 保存位置
 将此文件保存为：
 ```
-~/.hermes/continuity/runtime/practice_feedbacks/[task-id]-feedback.md
+runtime/practice_feedbacks/[task-id]-feedback.md
 ```
 
 ### 文件命名规范

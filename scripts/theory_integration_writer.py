@@ -6,7 +6,7 @@
 
 写入规则（三层边界）：
   🟢 自主操作：runtime/ 文件（reflection.md、*_draft.md、HOPE_STATE.md）
-  🔴 禁止操作：core/ 文件（需王俊华明确批准后手动修改）
+  🔴 禁止操作：core/ 文件（需personal明确批准后手动修改）
 
 写入映射：
   ENHANCEMENT（法则属性型）→ concepts_v2_draft.md + reflection.md
@@ -167,7 +167,7 @@ class TheoryIntegrationWriter:
         if hope_dir and hope_dir not in ("维持：当前方向保持", "pending", ""):
             lines.append(f"\n**希望方向**：{hope_dir}")
 
-        lines.append(f"\n**集成结果**：已写入 runtime，等待王俊华批准后进入 core。")
+        lines.append(f"\n**集成结果**：已写入 runtime，等待personal批准后进入 core。")
         lines.append("\n---")
         return "\n".join(lines)
 
@@ -219,7 +219,7 @@ class TheoryIntegrationWriter:
             )
             if improvement and improvement not in ("待定", ""):
                 body += f"\n\n**建议改进**：{improvement}"
-            body += "\n\n**状态**：runtime 候选——需王俊华审批后方可进入 core/failure_conditions。\n\n---"
+            body += "\n\n**状态**：runtime 候选——需personal审批后方可进入 core/failure_conditions。\n\n---"
         else:
             header = f"\n## 集成候选 {date_str}（{ctype}）：{title} {evidence_note}"
             body = (
@@ -228,7 +228,7 @@ class TheoryIntegrationWriter:
             )
             if improvement and improvement not in ("待定", ""):
                 body += f"\n\n**建议改进方向**：{improvement}"
-            body += "\n\n**状态**：runtime 候选——需王俊华审批后方可进入 core。\n\n---"
+            body += "\n\n**状态**：runtime 候选——需personal审批后方可进入 core。\n\n---"
 
         return header + body
 
