@@ -13,8 +13,9 @@
 8. core/expansion_cycle.md
 
 **② 总导航与定位**
-9. runtime/index.md
-10. runtime/exports/benyuan-spirit-method-outline-2026-06-12.md
+9. runtime/current_state.md
+10. runtime/index.md
+11. runtime/exports/benyuan-spirit-method-outline-2026-06-12.md
 
 **③ 按需进入治理框架与任务技能**
 - 治理框架：runtime/fava_governance_charter_from_benyuan_2026-06-12.md、runtime/agent_boundaries.md、runtime/value_judgment_protocol.md、runtime/trust_deception_protocol.md

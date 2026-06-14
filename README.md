@@ -64,6 +64,7 @@ benyuan-unfolding-theory/
 │   ├── memory_metabolism_protocol.md         # 记忆代谢协议
 │   ├── theory_to_code_mapping.md             # 理论概念→代码实现映射
 │   ├── HOPE_STATE.md              # 希望/张力监视器（工具链状态文件）
+│   ├── current_state.md          # 项目当前状态入口
 │   ├── index.md                  # 总索引（导航地图）
 │   └── exports/
 │       └── benyuan-spirit-method-outline-2026-06-12.md  # 精神与指导方法纲要
@@ -71,11 +72,14 @@ benyuan-unfolding-theory/
 │   ├── auto_feedback_submitter.py / integrated_feedback_workflow.py
 │   ├── feedback_classifier.py / evolution_candidate_manager.py / candidate_store.py
 │   ├── theory_integration_writer.py / hope_tension_collector.py / ...
+│   ├── paths.py                   # continuity 根目录统一解析
+│   ├── rename_agent.py            # 一键替换协同节点 / 运行环境名称
 │   └── README.md                  # 脚本详细使用说明
-└── tests/                         ← 🧪 自动化测试（pytest，59 项全部通过）
+├── pyproject.toml                 # 依赖声明（核心仅需标准库）
+└── tests/                         ← 🧪 自动化测试（pytest，62 项全部通过）
 ```
 
-运行测试：`python3 -m pytest tests/ -v`（59项，全部通过）
+运行测试：`python3 -m pytest tests/ -v`（62项，全部通过）
 
 ### 分层说明 / Layer Semantics
 
@@ -95,6 +99,7 @@ benyuan-unfolding-theory/
 1. **`core/theory.md`** — 核心理论，一页纸概述
 2. **`core/concepts.md`** — 核心概念的稳定定义
 3. **`runtime/exports/benyuan-spirit-method-outline-2026-06-12.md`** — 精神与指导方法纲要
+4. **`runtime/current_state.md`** — 项目当前状态与阶段
 
 ### 完整启动路径（深入理解）
 
@@ -154,6 +159,41 @@ python3 scripts/evolution_candidate_manager.py integrate <candidate-id>
 python3 scripts/hope_tension_collector.py --save
 python3 scripts/hope_tension_collector.py --history 10
 ```
+
+---
+
+## 改造与复用 / Customization
+
+本仓库默认使用 **Fava / 小蚕豆**（继续展开协同节点）和 **Hermes**（运行环境）作为 agent 名称。你可以把它们替换成自己的 agent 名称，让这套「理论核心 + 治理框架 + 任务技能」直接服务于你自己的 agent。
+
+### 一键替换（推荐）
+
+仓库内置 `scripts/rename_agent.py`，可批量替换文本与文件名：
+
+```bash
+# 1) 先预览将发生的改动（不写文件）
+python3 scripts/rename_agent.py --node 小智
+
+# 2) 确认无误后实际执行
+python3 scripts/rename_agent.py --node 小智 --apply
+
+# 3) 如需同时替换运行环境名 Hermes
+python3 scripts/rename_agent.py --node 小智 --runtime 小智运行时 --apply
+
+# 4) 替换后运行测试确认工具链正常
+python3 -m pytest tests/ -q
+```
+
+- `--node`：替换协同节点名 `Fava` / `fava` / `小蚕豆` → 你的名称
+- `--runtime`：可选，替换运行环境名 `Hermes` / `hermes` → 你的名称
+- 脚本会同时重命名含旧名的文件（如 `fava_governance_charter_*.md`）
+- 环境变量 `FAVA_CONTINUITY_ROOT`（`paths.py` 使用）不会被改动，保证工具链照常运行
+
+### 手动替换
+
+若想自行控制，可用文本替换工具全局替换 `小蚕豆`、`Fava`、`fava`（以及 `Hermes`、`hermes`）为你的名称，并重命名 `runtime/fava_governance_charter_from_benyuan_2026-06-12.md` 等文件。替换后同样建议运行测试。
+
+> 提示：维护者署名在本仓库中以 `先知` 表示，可按需替换为你自己的署名。
 
 ---
 
