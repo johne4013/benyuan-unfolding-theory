@@ -110,6 +110,8 @@
 
   <fieldset>
     <legend>④ 辅助检查</legend>
+    <div class="group-label">复查指征 / 目的（多选，合理检查依据）</div>
+    <div class="chips multi" id="c_aim"></div>
     <div class="group-label">今复查项目（多选）</div>
     <div class="chips multi" id="c_recheck"></div>
     <label class="field" style="margin-top:6px;">结果（留空则生成“结果回报：____”）
@@ -123,10 +125,19 @@
   </fieldset>
 
   <fieldset>
-    <legend>⑥ 诊疗计划 / 今日处理</legend>
+    <legend>⑥ 诊疗计划 / 今日处理（含合理用药依据）</legend>
     <div class="chips multi" id="c_plan"></div>
     <div class="group-label">上级医师查房（多选）</div>
     <div class="chips multi" id="c_rounds"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>⑦ 医疗安全与合规记录（纠纷举证 / 医疗鉴定 / 知情告知）</legend>
+    <div class="group-label">医患沟通与知情告知（多选）</div>
+    <div class="chips multi" id="c_comm"></div>
+    <div class="group-label">风险评估与防范（多选）</div>
+    <div class="chips multi" id="c_risk"></div>
+    <p class="tip">尤其注意：患者拒绝检查/治疗时，务必勾选告知风险条目并保留签字，留痕举证。</p>
   </fieldset>
 
   <button class="gen-btn" onclick="build()">⟳ 组装病程记录</button>
@@ -154,12 +165,32 @@ const BASE_EXAM = ["生命体征平稳","体温正常","切口敷料清洁干燥
 const RECHECK = ["血常规","肝肾功能、电解质","凝血功能及INR","心肌损伤标志物","心电图",
   "床旁胸片","心脏彩超","血气分析","BNP"];
 
+/* 复查指征/目的（合理检查依据，前置于复查句） */
+const RECHECK_AIM = ["术后常规复查","评估心功能","监测感染、指导抗生素使用","监测凝血、指导抗凝",
+  "评估电解质及内环境","评估贫血及出血情况","评估肝肾功能","评估容量及出入量","明确____诊断"];
+
 const ANALYSIS = ["目前病情平稳","较前明显好转","术后恢复顺利","生命体征平稳、各管路在位通畅",
   "病情较重，需密切观察","出现____，已予对症处理","暂无特殊处理"];
 
-const BASE_PLAN = ["继续目前治疗","继续抗感染治疗","继续强心、利尿、补钾治疗","加强雾化吸入、翻身拍背排痰",
+const BASE_PLAN = ["继续目前治疗","继续抗感染治疗（感染指标未恢复正常）","感染控制可、今停用抗生素",
+  "根据药敏结果调整抗生素为____","继续强心、利尿、补钾治疗","根据出入量调整利尿剂剂量",
+  "INR____、调整华法林剂量为____","因____加用____对症处理","加强雾化吸入、翻身拍背排痰",
   "鼓励并协助下床活动","加强营养支持","切口换药","拔除引流管","拔除尿管","拔除深静脉置管",
-  "复查相关化验及检查","转出监护室","病情平稳、准予今日出院","已向患者及家属交代病情"];
+  "复查相关化验及检查","转出监护室","病情平稳、准予今日出院"];
+
+/* 医患沟通与知情告知（纠纷举证 / 医疗鉴定） */
+const COMM = ["已向患者及家属交代目前病情及预后",
+  "已告知拟行检查/治疗的必要性及风险，患方知情同意",
+  "已告知目前用药目的及注意事项，患方理解配合",
+  "患者及家属对诊疗方案表示理解、同意并积极配合",
+  "已告知____的必要性，患者拒绝，充分告知相关风险及可能后果后患方仍坚持，已签字为据",
+  "已完成____知情同意书签署","已交代术后康复及出院后注意事项"];
+
+/* 风险评估与防范（诊疗规范 / 医疗鉴定） */
+const RISK = ["目前主要风险：出血、感染、心律失常、血栓栓塞、低心排等，已加强监测及防范",
+  "已行VTE（静脉血栓）风险评估，落实相应预防措施",
+  "已行跌倒/坠床风险评估，落实防范措施","已行压疮风险评估，落实防范措施",
+  "持续心电、血压、血氧监护，密切观察病情变化","已制定相应应急预案"];
 
 const ROUNDS = ["上级医师查看患者，同意目前诊疗方案","上级医师查房，指示继续目前治疗",
   "____主任/副主任医师查房，指示：____"];
@@ -215,8 +246,11 @@ function onSurgChange() { rebuildSurgDriven(); saveDraft(); }
 
 function initChips() {
   rebuildMulti("c_subj", SUBJ);
+  rebuildMulti("c_aim", RECHECK_AIM);
   rebuildMulti("c_recheck", RECHECK);
   rebuildMulti("c_ana", ANALYSIS);
+  rebuildMulti("c_comm", COMM);
+  rebuildMulti("c_risk", RISK);
   rebuildMulti("c_rounds", ROUNDS);
   rebuildSurgDriven();
 }
@@ -242,15 +276,23 @@ function build() {
   const examParts = v.concat(picked("c_exam"));
   if (examParts.length) body += "查体：" + examParts.join("，") + "。";
 
-  const recheck = picked("c_recheck"), auxText = val("aux_text");
-  if (recheck.length) body += "今复查" + recheck.join("、") + "，" + (auxText || "结果回报：____") + "。";
-  else if (auxText) body += auxText.replace(/。$/, "") + "。";
+  const recheck = picked("c_recheck"), auxText = val("aux_text"), aim = picked("c_aim");
+  if (recheck.length) {
+    const aimStr = aim.length ? "为" + aim.join("、") + "，" : "";
+    body += aimStr + "今复查" + recheck.join("、") + "，" + (auxText || "结果回报：____") + "。";
+  } else if (auxText) body += auxText.replace(/。$/, "") + "。";
 
   const ana = picked("c_ana");
   if (ana.length) body += ana.join("，") + "。";
 
+  const risk = picked("c_risk");
+  if (risk.length) body += risk.join("；") + "。";
+
   const plan = picked("c_plan");
   if (plan.length) body += "诊疗计划：" + plan.join("，") + "。";
+
+  const comm = picked("c_comm");
+  if (comm.length) body += comm.join("；") + "。";
 
   const rounds = picked("c_rounds");
   if (rounds.length) body += rounds.join("；") + "。";
@@ -281,7 +323,7 @@ function copyField(id, btn) {
 /* 草稿 */
 const DRAFT_KEY = "cardiacProgressNoteV1";
 const TEXT_IDS = ["g_dt","g_pod","g_surg","v_t","v_hr","v_r","v_bp","v_spo2","aux_text","out"];
-const CHIP_GROUPS = ["c_subj","c_exam","c_recheck","c_ana","c_plan","c_rounds"];
+const CHIP_GROUPS = ["c_subj","c_exam","c_aim","c_recheck","c_ana","c_risk","c_plan","c_comm","c_rounds"];
 
 function saveDraft() {
   const d = { fields: {}, chips: {} };
