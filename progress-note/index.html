@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>心脏外科 · 日常病程记录智能生成</title>
+<style>
+  :root {
+    --primary: #1e6fb8; --primary-dark: #15528a; --bg: #eef2f6;
+    --border: #d4dce4; --danger: #c0392b; --on: #1e8f5a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    background: var(--bg); color: #2c3e50; font-size: 14px;
+  }
+  .toolbar {
+    position: sticky; top: 0; z-index: 10; background: var(--primary); color: #fff;
+    padding: 10px 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .toolbar h1 { font-size: 17px; margin: 0 auto 0 0; font-weight: 600; }
+  .toolbar button {
+    border: none; border-radius: 4px; padding: 8px 18px; font-size: 14px;
+    cursor: pointer; background: #fff; color: var(--primary-dark); font-weight: 600;
+  }
+  .toolbar button:hover { background: #e8f1fa; }
+  .toolbar button.danger { background: transparent; color: #ffd9d3; border: 1px solid #ffd9d3; }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
+  fieldset {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    margin: 0 0 14px; padding: 12px 16px 16px;
+  }
+  legend { font-weight: 700; color: var(--primary-dark); padding: 0 8px; font-size: 15px; }
+
+  .group-label { font-size: 12.5px; color: #555; font-weight: 700; margin: 8px 0 3px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 3px 0 4px; }
+  .chips button {
+    border: 1px solid var(--on); background: #f4faf6; color: var(--on);
+    border-radius: 12px; padding: 3px 11px; font-size: 12.5px; cursor: pointer;
+  }
+  .chips button:hover { background: #e4f6ed; }
+  .chips button.on { background: var(--on); color: #fff; font-weight: 600; }
+
+  label.field { display: block; font-size: 13px; color: #555; }
+  label.field input, label.field select {
+    width: 100%; margin-top: 3px; padding: 6px 8px;
+    border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-family: inherit;
+  }
+  .row3 { display: grid; grid-template-columns: 1.6fr 0.7fr 1.4fr; gap: 10px; }
+  .vitals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px 8px; margin: 4px 0 6px; }
+  .vitals input { width: 100%; margin-top: 3px; padding: 6px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
+  textarea {
+    width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 4px;
+    font-size: 13.5px; font-family: inherit; resize: vertical; line-height: 1.6; background: #fcfdfe;
+  }
+  .gen-btn {
+    margin: 6px 0 2px; padding: 7px 18px; border: none; background: var(--primary);
+    color: #fff; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 600;
+  }
+  .gen-btn:hover { background: var(--primary-dark); }
+  .out-head { display: flex; align-items: center; gap: 8px; margin: 8px 0 3px; }
+  .out-head .lbl { font-size: 13px; color: #555; font-weight: 700; }
+  .copy-btn {
+    border: 1px solid var(--primary); background: #fff; color: var(--primary-dark);
+    border-radius: 4px; padding: 2px 12px; font-size: 12px; cursor: pointer;
+  }
+  .copy-btn:hover { background: #e8f1fa; }
+  .copy-btn.done { border-color: var(--on); color: var(--on); }
+  .tip { font-size: 12px; color: #888; margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>心脏外科 · 日常病程记录智能生成</h1>
+  <button onclick="build();copyField('out',event.target)">生成并复制</button>
+  <button class="danger" onclick="clearAll()">清空重填</button>
+</div>
+
+<div class="wrap">
+
+  <fieldset>
+    <legend>① 基本信息</legend>
+    <div class="row3">
+      <label class="field">记录日期时间 <input id="g_dt" type="datetime-local"></label>
+      <label class="field">术后第__天 <input id="g_pod" placeholder="留空=非术后"></label>
+      <label class="field">手术/术式（联动查体与处理）
+        <select id="g_surg" onchange="onSurgChange()"></select>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>② 主观 / 一般情况</legend>
+    <div class="chips multi" id="c_subj"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>③ 查体（生命体征可留空）</legend>
+    <div class="vitals">
+      <label class="field">T℃ <input id="v_t"></label>
+      <label class="field">HR次/分 <input id="v_hr"></label>
+      <label class="field">R次/分 <input id="v_r"></label>
+      <label class="field">BP mmHg <input id="v_bp"></label>
+      <label class="field">SpO₂% <input id="v_spo2"></label>
+    </div>
+    <div class="chips multi" id="c_exam"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>④ 辅助检查</legend>
+    <div class="group-label">复查指征 / 目的（多选，合理检查依据）</div>
+    <div class="chips multi" id="c_aim"></div>
+    <div class="group-label">今复查项目（多选）</div>
+    <div class="chips multi" id="c_recheck"></div>
+    <label class="field" style="margin-top:6px;">结果（留空则生成“结果回报：____”）
+      <input id="aux_text" placeholder="如：血红蛋白105g/L，电解质正常">
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>⑤ 病情分析</legend>
+    <div class="chips multi" id="c_ana"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>⑥ 诊疗计划 / 今日处理（含合理用药依据）</legend>
+    <div class="chips multi" id="c_plan"></div>
+    <div class="group-label">上级医师查房（多选）</div>
+    <div class="chips multi" id="c_rounds"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>⑦ 医疗安全与合规记录（纠纷举证 / 医疗鉴定 / 知情告知）</legend>
+    <div class="group-label">医患沟通与知情告知（多选）</div>
+    <div class="chips multi" id="c_comm"></div>
+    <div class="group-label">风险评估与防范（多选）</div>
+    <div class="chips multi" id="c_risk"></div>
+    <p class="tip">尤其注意：患者拒绝检查/治疗时，务必勾选告知风险条目并保留签字，留痕举证。</p>
+  </fieldset>
+
+  <button class="gen-btn" onclick="build()">⟳ 组装病程记录</button>
+  <div class="out-head">
+    <span class="lbl">日常病程记录</span>
+    <button class="copy-btn" onclick="copyField('out', this)">复制</button>
+  </div>
+  <textarea id="out" rows="9" placeholder="点选上方要素后点「组装病程记录」；____ 处需手动补全"></textarea>
+
+</div>
+
+<script>
+/* =====================================================================
+   知识库：科室维护人员仅需修改本区
+===================================================================== */
+const SUBJ = ["一般情况可，无明显不适","诉切口疼痛","诉胸闷、气短","诉咳嗽、咳痰",
+  "诉心悸","诉乏力","诉头晕","诉纳差","无发热","无胸闷、气促",
+  "精神可","精神欠佳","饮食可","饮食欠佳","睡眠可","睡眠欠佳","二便正常","已排气、排便"];
+
+const BASE_EXAM = ["生命体征平稳","体温正常","切口敷料清洁干燥","切口愈合良好、无红肿渗出",
+  "切口对合好、Ⅱ/甲愈合","切口少量渗液、已换药","心律齐","心律不齐","双肺呼吸音清",
+  "双肺呼吸音粗","双肺底可闻及湿性啰音","腹软、无压痛","双下肢无水肿","双下肢轻度水肿",
+  "胸腔/纵隔引流管通畅、固定","引流管已拔除","尿管通畅","临时起搏器工作正常"];
+
+const RECHECK = ["血常规","肝肾功能、电解质","凝血功能及INR","心肌损伤标志物","心电图",
+  "床旁胸片","心脏彩超","血气分析","BNP"];
+
+/* 复查指征/目的（合理检查依据，前置于复查句） */
+const RECHECK_AIM = ["术后常规复查","评估心功能","监测感染、指导抗生素使用","监测凝血、指导抗凝",
+  "评估电解质及内环境","评估贫血及出血情况","评估肝肾功能","评估容量及出入量","明确____诊断"];
+
+const ANALYSIS = ["目前病情平稳","较前明显好转","术后恢复顺利","生命体征平稳、各管路在位通畅",
+  "病情较重，需密切观察","出现____，已予对症处理","暂无特殊处理"];
+
+const BASE_PLAN = ["继续目前治疗","继续抗感染治疗（感染指标未恢复正常）","感染控制可、今停用抗生素",
+  "根据药敏结果调整抗生素为____","继续强心、利尿、补钾治疗","根据出入量调整利尿剂剂量",
+  "INR____、调整华法林剂量为____","因____加用____对症处理","加强雾化吸入、翻身拍背排痰",
+  "鼓励并协助下床活动","加强营养支持","切口换药","拔除引流管","拔除尿管","拔除深静脉置管",
+  "复查相关化验及检查","转出监护室","病情平稳、准予今日出院"];
+
+/* 医患沟通与知情告知（纠纷举证 / 医疗鉴定） */
+const COMM = ["已向患者及家属交代目前病情及预后",
+  "已告知拟行检查/治疗的必要性及风险，患方知情同意",
+  "已告知目前用药目的及注意事项，患方理解配合",
+  "患者及家属对诊疗方案表示理解、同意并积极配合",
+  "已告知____的必要性，患者拒绝，充分告知相关风险及可能后果后患方仍坚持，已签字为据",
+  "已完成____知情同意书签署","已交代术后康复及出院后注意事项"];
+
+/* 风险评估与防范（诊疗规范 / 医疗鉴定） */
+const RISK = ["目前主要风险：出血、感染、心律失常、血栓栓塞、低心排等，已加强监测及防范",
+  "已行VTE（静脉血栓）风险评估，落实相应预防措施",
+  "已行跌倒/坠床风险评估，落实防范措施","已行压疮风险评估，落实防范措施",
+  "持续心电、血压、血氧监护，密切观察病情变化","已制定相应应急预案"];
+
+const ROUNDS = ["上级医师查看患者，同意目前诊疗方案","上级医师查房，指示继续目前治疗",
+  "____主任/副主任医师查房，指示：____"];
+
+/* 术式联动：追加查体与处理要点 */
+const SURG = {
+  none:    { label:"（未选 / 内科）", exam:[], plan:[] },
+  cabg:    { label:"冠脉搭桥术(CABG)",
+    exam:["取大隐静脉侧下肢切口愈合好、无明显肿胀"],
+    plan:["继续抗血小板治疗","患肢穿弹力袜、抬高制动","心脏康复指导"] },
+  valveMech:{ label:"机械瓣置换术",
+    exam:[], plan:["监测INR、调整华法林剂量","继续华法林抗凝","向患者宣教终身抗凝注意事项"] },
+  valveBio:{ label:"生物瓣置换 / 瓣膜成形术",
+    exam:[], plan:["监测凝血功能","按疗程抗凝治疗"] },
+  tevar:   { label:"主动脉腔内隔绝术(TEVAR)",
+    exam:["双侧股动脉穿刺处无渗血、血肿，足背动脉搏动可"],
+    plan:["严格控制血压、心率","监测穿刺侧肢体血运及尿量"] },
+  aorta:   { label:"大血管开放手术",
+    exam:[], plan:["严格控制血压","监测神志、尿量及四肢活动"] },
+  tavr:    { label:"经导管主动脉瓣置换(TAVR)",
+    exam:["穿刺处无渗血、血肿"], plan:["监测心率及房室传导阻滞","继续抗栓治疗"] },
+  chd:     { label:"先心病矫治术",
+    exam:[], plan:["监测心律","复查心脏超声评估"] },
+  pericard:{ label:"心包开窗 / 引流术",
+    exam:["心包/胸腔引流管通畅"], plan:["记录每日引流量","复查心脏超声评估积液"] }
+};
+
+/* =====================================================================
+   逻辑
+===================================================================== */
+const $ = id => document.getElementById(id);
+const val = id => $(id).value.trim();
+const uniq = a => [...new Set(a)];
+
+/* 术式下拉 */
+$("g_surg").innerHTML = Object.entries(SURG).map(([k, s]) =>
+  `<option value="${k}">${s.label}</option>`).join("");
+
+/* chips 渲染（保留已选状态） */
+function rebuildMulti(id, arr) {
+  const on = new Set([...document.querySelectorAll(`#${id} button.on`)].map(b => b.textContent));
+  $(id).innerHTML = uniq(arr).map(s =>
+    `<button type="button" class="${on.has(s) ? "on" : ""}" onclick="this.classList.toggle('on');saveDraft()">${s}</button>`).join("");
+}
+const picked = id => [...document.querySelectorAll(`#${id} button.on`)].map(b => b.textContent);
+
+function rebuildSurgDriven() {
+  const s = SURG[$("g_surg").value] || SURG.none;
+  rebuildMulti("c_exam", BASE_EXAM.concat(s.exam));
+  rebuildMulti("c_plan", BASE_PLAN.concat(s.plan));
+}
+function onSurgChange() { rebuildSurgDriven(); saveDraft(); }
+
+function initChips() {
+  rebuildMulti("c_subj", SUBJ);
+  rebuildMulti("c_aim", RECHECK_AIM);
+  rebuildMulti("c_recheck", RECHECK);
+  rebuildMulti("c_ana", ANALYSIS);
+  rebuildMulti("c_comm", COMM);
+  rebuildMulti("c_risk", RISK);
+  rebuildMulti("c_rounds", ROUNDS);
+  rebuildSurgDriven();
+}
+
+/* 组装病程记录 */
+function build() {
+  const dt = $("g_dt").value ? $("g_dt").value.replace("T", " ") : "";
+  const pod = val("g_pod");
+  let head = dt;
+  if (pod) head += (head ? "　" : "") + `术后第${pod}天`;
+
+  let body = "";
+  const subj = picked("c_subj");
+  body += "患者" + (subj.length ? subj.join("，")
+    : "一般情况可，无明显不适，精神、饮食、睡眠可，二便正常") + "。";
+
+  const v = [];
+  if (val("v_t")) v.push(`T ${val("v_t")}℃`);
+  if (val("v_hr")) v.push(`HR ${val("v_hr")}次/分`);
+  if (val("v_r")) v.push(`R ${val("v_r")}次/分`);
+  if (val("v_bp")) v.push(`BP ${val("v_bp")}mmHg`);
+  if (val("v_spo2")) v.push(`SpO₂ ${val("v_spo2")}%`);
+  const examParts = v.concat(picked("c_exam"));
+  if (examParts.length) body += "查体：" + examParts.join("，") + "。";
+
+  const recheck = picked("c_recheck"), auxText = val("aux_text"), aim = picked("c_aim");
+  if (recheck.length) {
+    const aimStr = aim.length ? "为" + aim.join("、") + "，" : "";
+    body += aimStr + "今复查" + recheck.join("、") + "，" + (auxText || "结果回报：____") + "。";
+  } else if (auxText) body += auxText.replace(/。$/, "") + "。";
+
+  const ana = picked("c_ana");
+  if (ana.length) body += ana.join("，") + "。";
+
+  const risk = picked("c_risk");
+  if (risk.length) body += risk.join("；") + "。";
+
+  const plan = picked("c_plan");
+  if (plan.length) body += "诊疗计划：" + plan.join("，") + "。";
+
+  const comm = picked("c_comm");
+  if (comm.length) body += comm.join("；") + "。";
+
+  const rounds = picked("c_rounds");
+  if (rounds.length) body += rounds.join("；") + "。";
+
+  $("out").value = (head ? head + "\n" : "") + body +
+    "\n　　　　　　　　　　　　　　　　　　　　医师签名：____";
+  saveDraft();
+}
+
+/* 复制 */
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); }
+  catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = t; document.body.appendChild(ta); ta.select();
+    document.execCommand("copy"); ta.remove();
+  }
+}
+function copyField(id, btn) {
+  copyText($(id).value.trim());
+  if (btn && btn.classList) {
+    const old = btn.textContent;
+    btn.textContent = "已复制✓"; btn.classList.add("done");
+    setTimeout(() => { btn.textContent = old; btn.classList.remove("done"); }, 1200);
+  }
+}
+
+/* 草稿 */
+const DRAFT_KEY = "cardiacProgressNoteV1";
+const TEXT_IDS = ["g_dt","g_pod","g_surg","v_t","v_hr","v_r","v_bp","v_spo2","aux_text","out"];
+const CHIP_GROUPS = ["c_subj","c_exam","c_aim","c_recheck","c_ana","c_risk","c_plan","c_comm","c_rounds"];
+
+function saveDraft() {
+  const d = { fields: {}, chips: {} };
+  TEXT_IDS.forEach(id => d.fields[id] = $(id).value);
+  CHIP_GROUPS.forEach(g => d.chips[g] = picked(g));
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+}
+function loadDraft() {
+  let d; try { d = JSON.parse(localStorage.getItem(DRAFT_KEY)); } catch (e) {}
+  if (d && d.fields && d.fields.g_surg) $("g_surg").value = d.fields.g_surg;
+  initChips();
+  if (d) {
+    TEXT_IDS.forEach(id => { if (d.fields?.[id] != null) $(id).value = d.fields[id]; });
+    Object.entries(d.chips || {}).forEach(([g, arr]) =>
+      [...document.querySelectorAll(`#${g} button`)].forEach(b => {
+        if (arr.includes(b.textContent)) b.classList.add("on"); }));
+  } else {
+    const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    $("g_dt").value = now.toISOString().slice(0, 16);
+  }
+}
+function clearAll() {
+  if (!confirm("确定清空所有已填写内容？")) return;
+  localStorage.removeItem(DRAFT_KEY); location.reload();
+}
+
+["g_dt","g_pod","v_t","v_hr","v_r","v_bp","v_spo2","aux_text","out"].forEach(id =>
+  $(id) && $(id).addEventListener("input", saveDraft));
+loadDraft();
+</script>
+</body>
+</html>
