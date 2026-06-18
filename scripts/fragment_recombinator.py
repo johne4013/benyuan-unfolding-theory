@@ -37,6 +37,10 @@ runtime/memory.md（人工维护的长期记忆）与 runtime/reflection.md
     # 对高张力配对做重组（需要 ANTHROPIC_API_KEY）；--apply 写入候选
     python3 fragment_recombinator.py recombine --top 5
     python3 fragment_recombinator.py recombine --top 5 --apply
+
+    # 生成人类可读摘要文件，供先知异步阅读与决策
+    python3 fragment_recombinator.py digest --top 5
+    python3 fragment_recombinator.py digest --top 5 --apply  # 同时写入候选库
 """
 
 import argparse
@@ -397,6 +401,147 @@ def _cmd_pairs(args):
         print(f"  {score:.3f} {cross}  [{a['id']}] {a['title'][:24]}  ×  [{b['id']}] {b['title'][:24]}")
 
 
+def _format_digest(result: Dict, date_str: str) -> str:
+    """把 run_recombination 的结果格式化为先知可阅读的 markdown 摘要。"""
+    kept = result["kept"]
+    saved = result.get("candidates_saved", [])
+
+    lines = [
+        f"# 碎片重组摘要 {date_str}",
+        "",
+        f"> 碎片 {result['fragments']} 个 · 高张力配对 {result['pairs']} 个 · "
+        f"重组 {len(result['syntheses'])} 次 · 通过筛选 {len(kept)} 个",
+        "",
+        "---",
+        "",
+        "## 阅读说明",
+        "",
+        "本文件由 `fragment_recombinator.py digest` 自动生成，供先知（维护者）异步阅读。",
+        "对感兴趣的条目，按以下流程决策：",
+        "",
+        "```bash",
+        "# 1. 把你认为有价值的重组写入候选库（若本次 digest 未加 --apply）",
+        "python3 fragment_recombinator.py recombine --top 5 --apply",
+        "",
+        "# 2. 列出待审候选（过滤出重组来源的）",
+        "python3 evolution_candidate_manager.py list-pending",
+        "",
+        "# 3. 批准感兴趣的候选",
+        "python3 evolution_candidate_manager.py approve <candidate-id>",
+        "",
+        "# 4. 集成进 runtime 草案（先知审批后可进入 core）",
+        "python3 evolution_candidate_manager.py integrate <candidate-id>",
+        "```",
+        "",
+        "---",
+        "",
+    ]
+
+    if not kept:
+        lines += [
+            "## 本次无通过筛选的重组结果",
+            "",
+            "所有重组结果均未能锚定到已有理论概念（锚点筛选不通过），",
+            "或碎片数量不足以构成有意义的高张力配对。",
+            "",
+            "建议：积累更多 memory.md / reflection.md 条目后再运行。",
+        ]
+    else:
+        lines += [f"## 重组结果（{len(kept)} 个通过筛选）", ""]
+        for i, s in enumerate(kept, 1):
+            tension_icon = {"互补": "🔗", "矛盾": "⚡", "跨层": "🌉"}.get(
+                s.get("tension_type", ""), "💡"
+            )
+            lines += [
+                f"### {i}. {tension_icon} {s.get('new_structure_title', '（无标题）')}",
+                "",
+                f"**张力类型**：{s.get('tension_type', '')}　"
+                f"**张力分**：{s.get('tension', 'N/A')}　"
+                f"**锚定概念**：`{s.get('anchor_concept', '')}`",
+                "",
+                f"**合成说明**",
+                "",
+                f"> {s.get('synthesis', '')}",
+                "",
+                f"**打开的新可能性**：{s.get('opens_new_possibility', '')}",
+                "",
+                f"**希望方向**：{s.get('hope_direction', '')}",
+                "",
+                f"**来源碎片**：`{'` · `'.join(s.get('source_fragments', []))}`",
+                "",
+                "---",
+                "",
+            ]
+
+    if saved:
+        lines += [
+            "## 已写入候选库",
+            "",
+            f"本次 digest 同时以 `--apply` 模式运行，共写入 {len(saved)} 个候选：",
+            "",
+        ]
+        for cid in saved:
+            lines.append(f"- `{cid}`")
+        lines += ["", "用 `evolution_candidate_manager.py list-pending` 查看完整列表。", ""]
+
+    if result.get("errors"):
+        lines += ["## 告警", ""]
+        for e in result["errors"]:
+            lines.append(f"- {e}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def write_digest(content: str, runtime=None) -> Path:
+    """将摘要写入 runtime/recombination_digest_YYYY-MM-DD.md，原子写入。"""
+    import os
+    import tempfile
+    base = Path(runtime) if runtime is not None else runtime_dir()
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    out_path = base / f"recombination_digest_{date_str}.md"
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=base, suffix=".tmp")
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp_path, out_path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+    return out_path
+
+
+def _cmd_digest(args):
+    result = run_recombination(
+        min_tension=args.min_tension,
+        top_n=args.top,
+        apply=args.apply,
+    )
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    content = _format_digest(result, date_str)
+    out_path = write_digest(content)
+    print(f"✓ 摘要已写入：{out_path}")
+    kept = result["kept"]
+    saved = result.get("candidates_saved", [])
+    print(f"  碎片 {result['fragments']} 个，高张力配对 {result['pairs']} 对，"
+          f"通过筛选 {len(kept)} 个" + (f"，写入候选 {len(saved)} 个" if saved else ""))
+    if kept:
+        print("\n通过筛选的重组（阅读摘要文件获取完整内容）：")
+        for s in kept:
+            icon = {"互补": "🔗", "矛盾": "⚡", "跨层": "🌉"}.get(s.get("tension_type", ""), "💡")
+            print(f"  {icon} {s.get('new_structure_title', '')} "
+                  f"[锚定：{s.get('anchor_concept', '')}]")
+    if not args.apply:
+        print("\n（预览模式：摘要已写入但未提交候选库。加 --apply 同时写入候选。）")
+    if result.get("errors"):
+        print("\n告警：")
+        for e in result["errors"]:
+            print(f"  {e}")
+
+
 def _cmd_recombine(args):
     result = run_recombination(
         min_tension=args.min_tension,
@@ -450,6 +595,14 @@ def main():
     p_rec.add_argument("--apply", action="store_true", help="把通过筛选的重组写入候选库")
     p_rec.add_argument("--json", action="store_true", dest="output_json")
 
+    p_dig = sub.add_parser(
+        "digest",
+        help="重组并生成人类可读摘要文件（runtime/recombination_digest_YYYY-MM-DD.md）"
+    )
+    p_dig.add_argument("--top", type=int, default=5)
+    p_dig.add_argument("--min-tension", type=float, default=DEFAULT_MIN_TENSION)
+    p_dig.add_argument("--apply", action="store_true", help="同时把通过筛选的重组写入候选库")
+
     args = parser.parse_args()
 
     if args.cmd == "scan":
@@ -458,6 +611,8 @@ def main():
         _cmd_pairs(args)
     elif args.cmd == "recombine":
         _cmd_recombine(args)
+    elif args.cmd == "digest":
+        _cmd_digest(args)
     else:
         parser.print_help()
 

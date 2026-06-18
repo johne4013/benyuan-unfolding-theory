@@ -287,5 +287,5 @@ python3 scripts/memory_metabolism.py
 ---
 
 **最后更新：** 2026-06-16  
-**测试覆盖：** 78 项（`python3 -m pytest tests/ -v`，全部通过）  
+**测试覆盖：** 82 项（`python3 -m pytest tests/ -v`，全部通过）  
 **CI：** GitHub Actions 每次 push/PR 自动触发

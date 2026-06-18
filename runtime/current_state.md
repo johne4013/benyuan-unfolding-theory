@@ -45,7 +45,7 @@
 - **③ 必备任务技能** `runtime/` 任务类 + `scripts/`：
   - TTAF（任务前理论检视）/ PORF（五维实践观察）/ 实践方法论 / 任务展开协议 / 记忆代谢协议 / 理论→代码映射；
   - `scripts/` 自动化脚本，构成「反馈提交 → 分类 → 候选管理 → SQLite 存储 → 集成写入 → 张力扫描」闭环；并含认知操作工具 `llm_analogizer.py`（类比/想象）与 `fragment_recombinator.py`（碎片重组——记忆代谢之后的想象力环节）；
-  - `tests/`：78 项自动化测试（pytest），GitHub Actions CI 自动触发。
+  - `tests/`：82 项自动化测试（pytest），GitHub Actions CI 自动触发。
 - 三层边界框架（🔴/🟡/🟢）：🔴 维护者（先知）专有决策；🟡 协同节点提案 + 维护者批准；🟢 协同节点自主信息组织。
 
 当前禁止：

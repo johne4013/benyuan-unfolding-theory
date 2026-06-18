@@ -78,10 +78,10 @@ benyuan-unfolding-theory/
 │   ├── rename_agent.py            # 一键替换协同节点 / 运行环境名称
 │   └── README.md                  # 脚本详细使用说明
 ├── pyproject.toml                 # 依赖声明（核心仅需标准库）
-└── tests/                         ← 🧪 自动化测试（pytest，78 项全部通过）
+└── tests/                         ← 🧪 自动化测试（pytest，82 项全部通过）
 ```
 
-运行测试：`python3 -m pytest tests/ -v`（78项，全部通过）
+运行测试：`python3 -m pytest tests/ -v`（82项，全部通过）
 
 ### 分层说明 / Layer Semantics
 

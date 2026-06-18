@@ -196,6 +196,61 @@ def test_synthesis_to_candidate(tmp_path):
 
 
 # ──────────────────────────────────────────────────────────────────────
+# 摘要生成
+# ──────────────────────────────────────────────────────────────────────
+
+def test_format_digest_with_kept_results():
+    result = {
+        "fragments": 4,
+        "pairs": 3,
+        "syntheses": [{"is_meaningful": True}],
+        "kept": [
+            {
+                "tension_type": "矛盾",
+                "new_structure_title": "约束与生成的更高统一",
+                "synthesis": "两者在本原张力中互相成就。",
+                "anchor_concept": "本原张力",
+                "opens_new_possibility": "张力可操作化",
+                "hope_direction": "推进开放性",
+                "source_fragments": ["memory.md:0", "reflection.md:1"],
+                "tension": 0.55,
+            }
+        ],
+        "candidates_saved": [],
+        "errors": [],
+    }
+    md = fr._format_digest(result, "2026-06-18")
+    assert "约束与生成的更高统一" in md
+    assert "本原张力" in md
+    assert "矛盾" in md
+    assert "2026-06-18" in md
+
+
+def test_format_digest_empty_results():
+    result = {
+        "fragments": 2, "pairs": 1, "syntheses": [],
+        "kept": [], "candidates_saved": [], "errors": [],
+    }
+    md = fr._format_digest(result, "2026-06-18")
+    assert "无通过筛选" in md
+
+
+def test_write_digest_creates_file(tmp_path):
+    path = fr.write_digest("# 测试摘要内容", runtime=tmp_path)
+    assert path.exists()
+    assert "recombination_digest_" in path.name
+    assert path.read_text(encoding="utf-8") == "# 测试摘要内容"
+
+
+def test_write_digest_overwrites_same_day(tmp_path):
+    fr.write_digest("# 第一次", runtime=tmp_path)
+    fr.write_digest("# 第二次", runtime=tmp_path)
+    files = list(tmp_path.glob("recombination_digest_*.md"))
+    assert len(files) == 1
+    assert "第二次" in files[0].read_text(encoding="utf-8")
+
+
+# ──────────────────────────────────────────────────────────────────────
 # 端到端
 # ──────────────────────────────────────────────────────────────────────
 
