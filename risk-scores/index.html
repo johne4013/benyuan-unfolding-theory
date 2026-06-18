@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>心脏外科 · 风险评分工具</title>
+<style>
+  :root {
+    --primary: #1e6fb8; --primary-dark: #15528a; --bg: #eef2f6;
+    --border: #d4dce4; --danger: #c0392b; --warn: #d4890a; --ok: #1e8f5a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif;
+    background: var(--bg); color: #2c3e50; font-size: 14px;
+  }
+
+  /* ===== toolbar ===== */
+  .toolbar {
+    position: sticky; top: 0; z-index: 20; background: var(--primary); color: #fff;
+    padding: 10px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .toolbar h1 { font-size: 17px; margin: 0; font-weight: 600; }
+
+  /* ===== tabs ===== */
+  .tab-nav {
+    background: var(--primary-dark); display: flex; overflow-x: auto;
+    border-bottom: 3px solid #0c3355;
+  }
+  .tab-nav button {
+    border: none; background: transparent; color: rgba(255,255,255,.7);
+    padding: 9px 15px; font-size: 13px; cursor: pointer; white-space: nowrap;
+    font-family: inherit; font-weight: 600; border-bottom: 3px solid transparent; margin-bottom: -3px;
+    transition: color .15s;
+  }
+  .tab-nav button:hover { color: #fff; background: rgba(255,255,255,.1); }
+  .tab-nav button.on { color: #fff; border-bottom-color: #fff; }
+
+  .panel { display: none; max-width: 900px; margin: 0 auto; padding: 16px; }
+  .panel.on { display: block; }
+
+  /* ===== cards ===== */
+  .card {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    margin: 0 0 14px; padding: 14px 18px 16px;
+  }
+  .card-title {
+    font-weight: 700; color: var(--primary-dark); font-size: 15px;
+    margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .sec { font-size: 12px; font-weight: 700; color: var(--primary-dark); text-transform: uppercase;
+    letter-spacing: .4px; margin: 12px 0 6px; }
+
+  /* ===== form ===== */
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 12px; }
+  label.f { display: block; font-size: 13px; color: #555; margin-bottom: 6px; }
+  label.f input, label.f select {
+    width: 100%; margin-top: 3px; padding: 6px 8px;
+    border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-family: inherit;
+  }
+  .ck { display: flex; align-items: flex-start; gap: 6px; margin: 3px 0; font-size: 13px; cursor: pointer; }
+  .ck input { margin-top: 2px; flex-shrink: 0; }
+  .rg { display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 4px 0 8px; }
+  .rg label { font-size: 13px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+  /* ===== result ===== */
+  .rbox {
+    border-radius: 8px; padding: 14px 18px; margin: 12px 0;
+    text-align: center; font-weight: 700; font-size: 15px;
+  }
+  .rbox.low  { background: #e8f8f0; border: 2px solid var(--ok);     color: #0e4a29; }
+  .rbox.mid  { background: #fff5e0; border: 2px solid var(--warn);   color: #6b3e00; }
+  .rbox.high { background: #fdecea; border: 2px solid var(--danger); color: #721c17; }
+  .rbox.xhigh{ background: #f5b7b1; border: 2px solid #8b0000;       color: #4a0808; }
+  .rnum { font-size: 40px; font-weight: 900; display: block; line-height: 1.1; margin: 4px 0; }
+  .rsub { font-size: 12px; font-weight: 400; opacity: .8; margin-top: 6px; }
+
+  .btn {
+    padding: 9px 24px; border: none; background: var(--primary); color: #fff;
+    border-radius: 4px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px;
+  }
+  .btn:hover { background: var(--primary-dark); }
+  .btn-sm {
+    padding: 4px 14px; border: 1px solid var(--primary); background: #fff;
+    color: var(--primary-dark); border-radius: 4px; font-size: 13px; cursor: pointer;
+  }
+  .btn-sm:hover { background: #e8f1fa; }
+
+  /* ===== reference cards ===== */
+  .ref-hd {
+    background: var(--primary-dark); color: #fff; border-radius: 6px;
+    padding: 12px 16px; margin-bottom: 14px;
+  }
+  .ref-hd h2 { margin: 0 0 4px; font-size: 18px; }
+  .ref-hd p  { margin: 0; font-size: 12.5px; opacity: .85; }
+
+  .ext-btn {
+    display: inline-block; padding: 8px 18px; margin: 6px 4px 6px 0;
+    background: #fff; border: 2px solid var(--primary);
+    color: var(--primary-dark); border-radius: 6px; font-size: 13.5px;
+    font-weight: 700; text-decoration: none; cursor: pointer;
+  }
+  .ext-btn:hover { background: #e8f1fa; }
+
+  .rt { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 10px; }
+  .rt th { background: #f3f5f7; padding: 6px 10px; border: 1px solid var(--border); text-align: left; font-size: 12.5px; }
+  .rt td { padding: 6px 10px; border: 1px solid var(--border); }
+  .cl { color: var(--ok);     font-weight: 700; }
+  .cm { color: var(--warn);   font-weight: 700; }
+  .ch { color: var(--danger); font-weight: 700; }
+
+  .vl { list-style: none; padding: 0; margin: 4px 0 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 10px; }
+  .vl li { font-size: 13px; padding: 2px 0 2px 14px; position: relative; }
+  .vl li::before { content: "▸"; position: absolute; left: 0; color: var(--primary); }
+
+  .tip { background: #eef5ff; border-left: 4px solid var(--primary); padding: 7px 12px; margin: 8px 0; border-radius: 0 4px 4px 0; font-size: 13px; }
+  .warn{ background: #fff8e0; border-left: 4px solid var(--warn);    padding: 7px 12px; margin: 8px 0; border-radius: 0 4px 4px 0; font-size: 13px; }
+  .hint { font-size: 12px; color: #888; margin: 3px 0 8px; }
+
+  @media (max-width:600px) {
+    .g2,.g3,.vl { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>心脏外科 · 风险评分工具</h1>
+</div>
+
+<div class="tab-nav">
+  <button class="on"  onclick="tab(this,'es')">EuroSCORE II</button>
+  <button onclick="tab(this,'sts')">STS Score</button>
+  <button onclick="tab(this,'syn')">SYNTAX Score</button>
+  <button onclick="tab(this,'syn2')">SYNTAX Score II</button>
+  <button onclick="tab(this,'ncdr')">NCDR CathPCI</button>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     EuroSCORE II — 本地计算
+══════════════════════════════════════════════ -->
+<div id="p-es" class="panel on">
+
+  <div class="card">
+    <div class="card-title">EuroSCORE II — 心脏外科手术30天死亡率预测（本地计算）</div>
+    <p class="hint">系数来自 Nashef SAM et al., Eur J Cardiothorac Surg 2012;41:734–744；建议在 <strong>euroscore.org</strong> 核对后用于临床决策。</p>
+
+    <div class="sec">患者相关因素</div>
+    <div class="g2" style="margin-bottom:8px;">
+      <label class="f">年龄（岁）<input type="number" id="es_age" min="18" max="110" placeholder="如 68"></label>
+    </div>
+    <div class="ck"><input type="checkbox" id="es_f"><label for="es_f">女性</label></div>
+
+    <div class="sec">肾功能（Cockcroft-Gault 法估算 CrCl）</div>
+    <div class="rg">
+      <label><input type="radio" name="renal" value="0" checked> 正常（CrCl &gt; 85 ml/min）</label>
+      <label><input type="radio" name="renal" value="1"> 轻度减低（50–85）</label>
+      <label><input type="radio" name="renal" value="2"> 中重度（&lt; 50，未透析）</label>
+      <label><input type="radio" name="renal" value="3"> 透析中</label>
+    </div>
+
+    <div class="sec">其他患者因素</div>
+    <div class="g2">
+      <label class="ck"><input type="checkbox" id="es_art"> 颅外动脉粥样硬化（颈动脉杂音/狭窄≥50%、间歇性跛行、股/髂/肾动脉闭塞或介入史）</label>
+      <label class="ck"><input type="checkbox" id="es_mob"> 严重活动受限（非心脏原因，需协助才能走动）</label>
+      <label class="ck"><input type="checkbox" id="es_reop"> 既往心脏手术史（开胸）</label>
+      <label class="ck"><input type="checkbox" id="es_copd"> 慢性肺病（COPD，需长期支气管扩张剂或激素治疗）</label>
+      <label class="ck"><input type="checkbox" id="es_endo"> 活动性感染性心内膜炎（术前仍在使用抗生素）</label>
+      <label class="ck"><input type="checkbox" id="es_crit"> 术前危重状态（室速/室颤、IABP、心源性休克、急性肾衰、术前有创通气等）</label>
+    </div>
+
+    <div class="sec">心脏相关因素</div>
+    <label class="ck"><input type="checkbox" id="es_dm"> 糖尿病（胰岛素治疗）</label>
+    <label class="ck"><input type="checkbox" id="es_ccs4"> CCS Ⅳ级心绞痛（本次住院前）</label>
+    <label class="ck"><input type="checkbox" id="es_mi"> 近90天内心肌梗死</label>
+
+    <div class="sec" style="margin-top:10px;">NYHA 功能分级</div>
+    <div class="rg">
+      <label><input type="radio" name="nyha" value="0" checked> Ⅰ级</label>
+      <label><input type="radio" name="nyha" value="1"> Ⅱ级</label>
+      <label><input type="radio" name="nyha" value="2"> Ⅲ级</label>
+      <label><input type="radio" name="nyha" value="3"> Ⅳ级</label>
+    </div>
+
+    <div class="sec">左室射血分数（EF）</div>
+    <div class="rg">
+      <label><input type="radio" name="lvef" value="0" checked> 正常（&gt; 50%）</label>
+      <label><input type="radio" name="lvef" value="1"> 中度减低（31–50%）</label>
+      <label><input type="radio" name="lvef" value="2"> 重度减低（21–30%）</label>
+      <label><input type="radio" name="lvef" value="3"> 极差（≤ 20%）</label>
+    </div>
+
+    <div class="sec">肺动脉高压（静息 sPAP）</div>
+    <div class="rg">
+      <label><input type="radio" name="pah" value="0" checked> 无（≤ 30 mmHg）</label>
+      <label><input type="radio" name="pah" value="1"> 中度（31–55 mmHg）</label>
+      <label><input type="radio" name="pah" value="2"> 重度（&gt; 55 mmHg）</label>
+    </div>
+
+    <div class="sec">手术紧迫性</div>
+    <div class="rg">
+      <label><input type="radio" name="urg" value="0" checked> 择期</label>
+      <label><input type="radio" name="urg" value="1"> 急诊（同次住院、不能出院）</label>
+      <label><input type="radio" name="urg" value="2"> 紧急（24 h 内手术）</label>
+      <label><input type="radio" name="urg" value="3"> 抢救性（心肺复苏中或后直接手术）</label>
+    </div>
+
+    <div class="sec">手术类型（重量权重）</div>
+    <div class="rg">
+      <label><input type="radio" name="wt" value="0" checked> 单独 CABG</label>
+      <label><input type="radio" name="wt" value="1"> 单一非 CABG 手术（如单独瓣膜手术）</label>
+      <label><input type="radio" name="wt" value="2"> 两种手术（如 CABG + 瓣膜）</label>
+      <label><input type="radio" name="wt" value="3"> 三种及以上手术</label>
+      <label><input type="radio" name="wt" value="4"> 胸主动脉手术</label>
+      <label><input type="radio" name="wt" value="5"> 室间隔缺损修补</label>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+      <button class="btn" onclick="calcES()">计算 EuroSCORE II</button>
+      <button class="btn-sm" onclick="clearES()">清空</button>
+    </div>
+    <div id="es_out"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">风险分层参考</div>
+    <table class="rt">
+      <tr><th>EuroSCORE II 预测死亡率</th><th>风险分层</th><th>临床参考</th></tr>
+      <tr><td class="cl">&lt; 2%</td><td class="cl">低危</td><td>标准手术风险</td></tr>
+      <tr><td class="cm">2%–5%</td><td class="cm">中危</td><td>充分评估，术前充分优化</td></tr>
+      <tr><td class="ch">5%–10%</td><td class="ch">高危</td><td>讨论替代方案（TAVR 等）；MDT</td></tr>
+      <tr><td style="color:#8b0000;font-weight:700;">&gt; 10%</td><td style="color:#8b0000;font-weight:700;">极高危</td><td>首选介入/保守方案；审慎手术决策</td></tr>
+    </table>
+    <p class="hint">注：EuroSCORE II 在高风险患者中有高估死亡率的倾向，结合 STS Score 综合判断更为可靠。</p>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     STS Score
+══════════════════════════════════════════════ -->
+<div id="p-sts" class="panel">
+
+  <div class="ref-hd">
+    <h2>STS Score — 美国胸外科学会手术风险模型</h2>
+    <p>适用于 CABG、主动脉瓣置换、二尖瓣手术及联合手术；预测30天死亡率及主要并发症（卒中、肾衰、再次手术等）</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">风险分层解读</div>
+    <table class="rt">
+      <tr><th>STS PROM（预测30天死亡率）</th><th>风险分层</th><th>临床含义</th></tr>
+      <tr><td class="cl">&lt; 4%</td><td class="cl">低危</td><td>常规外科手术准入，标准围术期管理</td></tr>
+      <tr><td class="cm">4%–8%</td><td class="cm">中危</td><td>需充分讨论利弊；可考虑 TAVR/TMVR 等介入替代</td></tr>
+      <tr><td class="ch">&gt; 8%</td><td class="ch">高危</td><td>优先考虑介入治疗或保守策略；多学科心脏团队讨论</td></tr>
+    </table>
+    <p class="hint">STS 同时提供8项并发症预测（卒中、肾衰、长时间通气、深部感染、再次手术等），可综合参考。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">进官网前数据准备清单</div>
+    <div class="sec">基本信息</div>
+    <ul class="vl">
+      <li>年龄、性别</li><li>身高、体重（BMI）</li>
+      <li>种族</li><li>手术类型（CABG / AVR / MVR / 联合）</li>
+    </ul>
+    <div class="sec">心脏情况</div>
+    <ul class="vl">
+      <li>射血分数（EF%）</li><li>NYHA 功能分级</li>
+      <li>CCS 心绞痛分级</li><li>房颤类型（阵发/持续/永久）</li>
+      <li>近期 MI（距今天数）</li><li>既往 CABG 史</li>
+      <li>既往瓣膜手术史</li><li>冠脉病变支数</li>
+      <li>左主干病变（≥ 50%）</li><li>主动脉瓣狭窄峰值跨瓣压差</li>
+    </ul>
+    <div class="sec">合并症</div>
+    <ul class="vl">
+      <li>高血压</li><li>糖尿病及控制方式</li>
+      <li>血肌酐（μmol/L 或 mg/dL）</li><li>透析状态</li>
+      <li>慢阻肺</li><li>外周血管病</li>
+      <li>脑血管病史（TIA / 卒中）</li><li>免疫抑制状态</li>
+    </ul>
+    <div class="sec">术前状态</div>
+    <ul class="vl">
+      <li>手术紧迫性（择期/急诊/紧急/抢救）</li><li>心源性休克</li>
+      <li>IABP（主动脉内球囊反搏）</li><li>心跳骤停史</li>
+    </ul>
+    <div class="warn">STS Score 使用 STS 协会专有统计模型，<strong>无法在本地准确复现</strong>，请使用官方网站。</div>
+    <a class="ext-btn" href="https://riskcalc.sts.org/stswebriskcalc/" target="_blank">🔗 打开 STS 官方计算器</a>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SYNTAX Score
+══════════════════════════════════════════════ -->
+<div id="p-syn" class="panel">
+
+  <div class="ref-hd">
+    <h2>SYNTAX Score — 冠脉解剖复杂程度评分</h2>
+    <p>基于冠状动脉造影的解剖学评分，指导三支病变 / 左主干病变 PCI vs CABG 血运重建策略选择</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">评分区间与血运重建策略推荐</div>
+    <table class="rt">
+      <tr><th>SYNTAX 分值</th><th>复杂程度</th><th>三支病变推荐</th><th>无保护左主干病变</th></tr>
+      <tr>
+        <td class="cl">≤ 22</td><td class="cl">低复杂度</td>
+        <td>PCI 与 CABG 预后相似（可选 PCI）</td>
+        <td>CABG / PCI 均可，参考 SYNTAX II</td>
+      </tr>
+      <tr>
+        <td class="cm">23–32</td><td class="cm">中等复杂度</td>
+        <td>优先推荐 CABG；PCI 需 MDT 讨论</td>
+        <td>倾向 CABG；PCI 需 MDT 评估</td>
+      </tr>
+      <tr>
+        <td class="ch">≥ 33</td><td class="ch">高复杂度</td>
+        <td>强烈推荐 CABG（I 类推荐）</td>
+        <td>推荐 CABG</td>
+      </tr>
+    </table>
+    <p class="hint">依据：2018 ESC/EACTS 冠状动脉血运重建指南；SYNTAX 试验（Serruys et al. NEJM 2009）及长期随访数据。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">评分需要的信息（冠脉造影报告）</div>
+    <div class="sec">基础设置</div>
+    <ul class="vl">
+      <li>冠脉优势类型（右优势 / 左优势 / 均衡型）</li>
+      <li>需要处理的病变个数</li>
+    </ul>
+    <div class="sec">每处病变逐一评分（12节段图）</div>
+    <ul class="vl">
+      <li>病变所在节段（按 SYNTAX 分段编号）</li>
+      <li>完全闭塞（CTO）：闭塞时间、侧支等级</li>
+      <li>三叉分叉（Medina 分型）</li>
+      <li>开口病变（主动脉 - 冠状动脉开口）</li>
+      <li>严重扭曲（病变前段 ≥ 2处弯曲 &gt; 70°）</li>
+      <li>长病变（&gt; 20 mm）</li>
+      <li>严重钙化</li>
+      <li>血栓性病变</li>
+      <li>弥漫病变 / 小血管（直径 &lt; 2 mm）</li>
+    </ul>
+    <div class="warn">SYNTAX Score 需逐段解剖评分，算法复杂，<strong>不支持本地准确计算</strong>。建议由经过培训的医师使用官方工具。</div>
+    <a class="ext-btn" href="https://www.syntaxscore.org/" target="_blank">🔗 打开 SYNTAX Score 官方工具</a>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SYNTAX Score II
+══════════════════════════════════════════════ -->
+<div id="p-syn2" class="panel">
+
+  <div class="ref-hd">
+    <h2>SYNTAX Score II</h2>
+    <p>结合解剖学 SYNTAX 评分与8项临床因素，分别预测 PCI 和 CABG 的4年全因死亡率，支持个体化血运重建决策（Farooq V et al., Lancet 2013;381:639–650）</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">决策框架</div>
+    <table class="rt">
+      <tr><th>比较结果</th><th>推荐策略</th></tr>
+      <tr><td>CABG 预测4年死亡率 <strong>明显低于</strong> PCI（差值 &gt; 5%）</td><td class="ch">推荐 CABG</td></tr>
+      <tr><td>两者预测死亡率 <strong>相近</strong>（差值 ≤ 5%）</td><td class="cm">个体化决策（患者意愿、解剖可行性、合并症）</td></tr>
+      <tr><td>PCI 预测4年死亡率 <strong>明显低于</strong> CABG（差值 &gt; 5%）</td><td class="cl">倾向 PCI（患者可能不耐受开胸手术）</td></tr>
+    </table>
+    <div class="tip">SYNTAX Score II 主要在左主干病变和三支病变人群中验证，用于其他情况需谨慎。</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">所需变量（8项临床因素 + 解剖评分）</div>
+    <table class="rt">
+      <tr><th>变量</th><th>备注</th></tr>
+      <tr><td>解剖学 SYNTAX Score</td><td>必须先完成 SYNTAX Score 评分</td></tr>
+      <tr><td>年龄（岁）</td><td></td></tr>
+      <tr><td>肌酐清除率（ml/min）</td><td>Cockcroft-Gault 公式</td></tr>
+      <tr><td>左室射血分数（%）</td><td>超声或造影获得</td></tr>
+      <tr><td>无保护左主干病变</td><td>是 / 否</td></tr>
+      <tr><td>三支病变</td><td>是 / 否</td></tr>
+      <tr><td>女性</td><td>是 / 否</td></tr>
+      <tr><td>慢性阻塞性肺病（COPD）</td><td>是 / 否</td></tr>
+      <tr><td>外周血管病（PVD）</td><td>是 / 否</td></tr>
+    </table>
+    <a class="ext-btn" href="https://www.syntaxscore.org/calculator/syntaxscore/framesetss2.htm" target="_blank">🔗 打开 SYNTAX Score II 计算器</a>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════
+     NCDR CathPCI
+══════════════════════════════════════════════ -->
+<div id="p-ncdr" class="panel">
+
+  <div class="ref-hd">
+    <h2>NCDR CathPCI 风险评分</h2>
+    <p>美国心脏病学会心导管数据库（ACC-NCDR）模型，预测 PCI 围术期院内死亡率及出血、急性肾损伤等主要并发症</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">院内死亡率风险分层</div>
+    <table class="rt">
+      <tr><th>预测院内死亡率</th><th>风险分层</th><th>参考意义</th></tr>
+      <tr><td class="cl">&lt; 1%</td><td class="cl">低危</td><td>常规 PCI，标准围术期管理</td></tr>
+      <tr><td class="cm">1%–3%</td><td class="cm">中危</td><td>充分告知患者风险；优化抗栓和支持治疗</td></tr>
+      <tr><td class="ch">≥ 3%</td><td class="ch">高危</td><td>充分知情同意；讨论 IABP / Impella 等辅助支持；评估 CABG 是否更安全</td></tr>
+    </table>
+    <div class="tip">NCDR CathPCI 同时可预测出血并发症（BARC ≥ 3）风险，用于围术期出血 - 缺血平衡决策。</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">所需变量（数据准备清单）</div>
+    <div class="sec">患者基本信息</div>
+    <ul class="vl">
+      <li>年龄、性别</li><li>身高、体重（BMI）</li>
+    </ul>
+    <div class="sec">手术相关</div>
+    <ul class="vl">
+      <li>PCI 手术指征（稳定 / 不稳定型心绞痛 / NSTEMI / STEMI）</li>
+      <li>手术紧迫性（择期 / 紧急 / 急诊 / 抢救）</li>
+      <li>STEMI（是 / 否，发病至介入时间）</li>
+      <li>心源性休克（是 / 否）</li>
+      <li>心跳骤停（是 / 否）</li>
+      <li>急性心力衰竭 / 肺水肿</li>
+    </ul>
+    <div class="sec">合并症</div>
+    <ul class="vl">
+      <li>左室射血分数（%）</li><li>心力衰竭病史</li>
+      <li>高血压</li><li>糖尿病（及类型）</li>
+      <li>血肌酐 / 透析状态</li><li>慢阻肺</li>
+      <li>外周动脉疾病</li><li>脑血管病史</li>
+      <li>既往 PCI 史</li><li>既往 CABG 史</li>
+    </ul>
+    <div class="warn">NCDR 模型为持续更新的专有模型（当前为第8版），<strong>不支持本地精确复现</strong>。请通过 ACC 官方平台获取结果。</div>
+    <a class="ext-btn" href="https://www.ncdr.com/WebNCDR/" target="_blank">🔗 NCDR 官方平台</a>
+    <a class="ext-btn" href="https://www.acc.org/tools-and-practice-support/clinical-toolkits" target="_blank">🔗 ACC 临床工具集</a>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════ Tab 切换 ═══════════ */
+const TABS = { es:'p-es', sts:'p-sts', syn:'p-syn', syn2:'p-syn2', ncdr:'p-ncdr' };
+function tab(btn, key) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.tab-nav button').forEach(b => b.classList.remove('on'));
+  document.getElementById(TABS[key]).classList.add('on');
+  btn.classList.add('on');
+}
+
+/* ═══════════ EuroSCORE II 系数
+   来源：Nashef SAM et al. Eur J Cardiothorac Surg 2012;41:734-744
+═══════════ */
+const COEFF = {
+  age_per_yr:   0.0666354,   // 超过60岁每年
+  female:        0.3304052,
+  renal_mild:    0.0545740,   // CrCl 50-85
+  renal_mod:     0.4264085,   // CrCl <50，未透析
+  renal_dial:    0.6421338,   // 透析
+  art:           0.5360268,   // 颅外动脉粥样硬化
+  mob:           0.2393077,   // 活动受限
+  reop:          1.1186839,   // 既往心脏手术
+  copd:          0.1886564,
+  endo:          0.6194522,   // 活动性心内膜炎
+  crit:          1.0856770,   // 危重状态
+  dm:            0.3542749,   // 胰岛素糖尿病
+  nyha: [0, 0.1070545, 0.2958358, 0.5597929],  // Ⅱ/Ⅲ/Ⅳ vs Ⅰ
+  ccs4:          0.2226147,
+  lvef: [0, 0.3150652, 0.8084096, 0.9346919],  // 31-50 / 21-30 / ≤20
+  mi:            0.1528943,
+  pah: [0, 0.1788899, 0.3491475],              // 中度/重度
+  urg: [0, 0.3174673, 0.7039121, 1.3630835],  // 急诊/紧急/抢救
+  wt:  [0, 0.0062700, 0.5521478, 0.9724533, 0.6527205, 0.9058547],
+  // 单非CABG / 两种 / 三种+ / 胸主动脉 / VSD
+  intercept: -5.324537
+};
+
+function rdo(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? +el.value : 0;
+}
+const ck = id => document.getElementById(id).checked ? 1 : 0;
+
+function calcES() {
+  const age = +document.getElementById('es_age').value;
+  if (!age || age < 18 || age > 110) { alert('请输入有效年龄（18–110 岁）'); return; }
+
+  let L = COEFF.intercept;
+  L += Math.max(0, age - 60) * COEFF.age_per_yr;
+  L += ck('es_f') * COEFF.female;
+
+  const r = rdo('renal');
+  if (r === 1) L += COEFF.renal_mild;
+  else if (r === 2) L += COEFF.renal_mod;
+  else if (r === 3) L += COEFF.renal_dial;
+
+  L += ck('es_art')  * COEFF.art;
+  L += ck('es_mob')  * COEFF.mob;
+  L += ck('es_reop') * COEFF.reop;
+  L += ck('es_copd') * COEFF.copd;
+  L += ck('es_endo') * COEFF.endo;
+  L += ck('es_crit') * COEFF.crit;
+  L += ck('es_dm')   * COEFF.dm;
+  L += COEFF.nyha[rdo('nyha')];
+  L += ck('es_ccs4') * COEFF.ccs4;
+  L += COEFF.lvef[rdo('lvef')];
+  L += ck('es_mi')   * COEFF.mi;
+  L += COEFF.pah[rdo('pah')];
+  L += COEFF.urg[rdo('urg')];
+  L += COEFF.wt[rdo('wt')];
+
+  const p   = Math.exp(L) / (1 + Math.exp(L));
+  const pct = (p * 100).toFixed(2);
+  let cls, label;
+  if (p < 0.02)       { cls = 'low';   label = '低危'; }
+  else if (p < 0.05)  { cls = 'mid';   label = '中危'; }
+  else if (p < 0.10)  { cls = 'high';  label = '高危'; }
+  else                { cls = 'xhigh'; label = '极高危'; }
+
+  document.getElementById('es_out').innerHTML = `
+    <div class="rbox ${cls}">
+      <span class="rnum">${pct}%</span>
+      EuroSCORE II 预测30天死亡率　·　<strong>${label}</strong>
+      <div class="rsub">logit = ${L.toFixed(4)}　|　Nashef et al., EJCTS 2012　|　请至 euroscore.org 核对后用于临床决策</div>
+    </div>`;
+
+  saveDraft();
+}
+
+function clearES() {
+  ['es_age','es_f','es_art','es_mob','es_reop','es_copd','es_endo','es_crit','es_dm','es_ccs4','es_mi'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el.type === 'checkbox') el.checked = false;
+    else el.value = '';
+  });
+  ['renal','nyha','lvef','pah','urg','wt'].forEach(name => {
+    const first = document.querySelector(`input[name="${name}"]`);
+    if (first) first.checked = true;
+  });
+  document.getElementById('es_out').innerHTML = '';
+  localStorage.removeItem('esScore');
+}
+
+/* ═══════════ 草稿 ═══════════ */
+function saveDraft() {
+  const d = {
+    age: document.getElementById('es_age').value,
+    cks: ['es_f','es_art','es_mob','es_reop','es_copd','es_endo','es_crit','es_dm','es_ccs4','es_mi']
+           .filter(id => document.getElementById(id).checked),
+    rdos: Object.fromEntries(['renal','nyha','lvef','pah','urg','wt'].map(n => [n, rdo(n)]))
+  };
+  localStorage.setItem('esScore', JSON.stringify(d));
+}
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem('esScore'));
+    if (!d) return;
+    if (d.age) document.getElementById('es_age').value = d.age;
+    (d.cks || []).forEach(id => { document.getElementById(id).checked = true; });
+    Object.entries(d.rdos || {}).forEach(([n, v]) => {
+      const el = document.querySelector(`input[name="${n}"][value="${v}"]`);
+      if (el) el.checked = true;
+    });
+  } catch(e) {}
+}
+loadDraft();
+</script>
+</body>
+</html>

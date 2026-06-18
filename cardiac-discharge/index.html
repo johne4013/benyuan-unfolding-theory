@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>心脏外科患者出院告知单生成系统</title>
+<style>
+  :root {
+    --primary: #1e6fb8;
+    --primary-dark: #15528a;
+    --bg: #eef2f6;
+    --border: #d4dce4;
+    --danger: #c0392b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    background: var(--bg);
+    color: #2c3e50;
+    font-size: 14px;
+  }
+
+  /* ===== 工具栏 ===== */
+  .toolbar {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--primary); color: #fff;
+    padding: 10px 20px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .toolbar h1 { font-size: 17px; margin: 0 auto 0 0; font-weight: 600; }
+  .toolbar button {
+    border: none; border-radius: 4px; padding: 8px 18px;
+    font-size: 14px; cursor: pointer; background: #fff; color: var(--primary-dark);
+    font-weight: 600;
+  }
+  .toolbar button:hover { background: #e8f1fa; }
+  .toolbar button.danger { background: transparent; color: #ffd9d3; border: 1px solid #ffd9d3; }
+
+  /* ===== 布局 ===== */
+  .layout {
+    display: flex; gap: 16px; padding: 16px;
+    max-width: 1500px; margin: 0 auto;
+    align-items: flex-start;
+  }
+  .form-panel { flex: 0 0 460px; }
+  .preview-panel { flex: 1; min-width: 0; }
+
+  /* ===== 表单卡片 ===== */
+  fieldset {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    margin: 0 0 14px; padding: 12px 16px 16px;
+  }
+  legend {
+    font-weight: 700; color: var(--primary-dark); padding: 0 8px; font-size: 15px;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+  label.field { display: block; font-size: 13px; color: #555; }
+  label.field input, label.field select {
+    width: 100%; margin-top: 3px; padding: 6px 8px;
+    border: 1px solid var(--border); border-radius: 4px; font-size: 14px;
+  }
+  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+  .checks label {
+    display: flex; align-items: center; gap: 6px; padding: 5px 8px;
+    border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+    user-select: none;
+  }
+  .checks label:has(input:checked) { background: #e8f1fa; border-color: var(--primary); }
+  .hint { font-size: 12px; color: #888; margin: 6px 0 8px; }
+
+  /* ===== 药品录入 ===== */
+  .med-row {
+    display: grid; grid-template-columns: 1.2fr 0.9fr 1fr 0.7fr 1fr 28px;
+    gap: 5px; margin-bottom: 6px; align-items: center;
+  }
+  .med-row input, .med-row select {
+    width: 100%; padding: 5px 6px; border: 1px solid var(--border);
+    border-radius: 4px; font-size: 13px;
+  }
+  .med-row .del {
+    border: none; background: none; color: var(--danger);
+    font-size: 18px; cursor: pointer; padding: 0; line-height: 1;
+  }
+  .med-head { font-size: 12px; color: #777; font-weight: 600; }
+  #addMed {
+    margin-top: 4px; padding: 6px 14px; border: 1px dashed var(--primary);
+    background: #f4f9fe; color: var(--primary-dark); border-radius: 4px; cursor: pointer;
+  }
+
+  /* ===== A4 预览 ===== */
+  .sheet {
+    background: #fff; width: 210mm; max-width: 100%;
+    min-height: 297mm; margin: 0 auto;
+    padding: 16mm 18mm; box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    font-size: 13.5px; line-height: 1.7;
+  }
+  .sheet h2.doc-title {
+    text-align: center; font-size: 21px; margin: 0 0 2px; letter-spacing: 2px;
+  }
+  .sheet .hospital {
+    text-align: center; font-size: 15px; color: #444; margin-bottom: 4px;
+  }
+  .sheet hr.rule { border: none; border-top: 2px solid #333; margin: 6px 0 12px; }
+  .pt-info {
+    width: calc(100% - 2px); border-collapse: collapse; margin-bottom: 12px; font-size: 13px;
+    border: 1.5px solid #555;
+  }
+  .pt-info td { border: 1px solid #999; padding: 4px 8px; }
+  .pt-info td.k { background: #f3f5f7; width: 72px; white-space: nowrap; text-align: center; }
+  .sheet h3 {
+    font-size: 15px; margin: 14px 0 6px; padding-left: 8px;
+    border-left: 4px solid var(--primary); page-break-after: avoid;
+  }
+  .sheet h4 { font-size: 13.5px; margin: 8px 0 3px; page-break-after: avoid; }
+  .sheet ul { margin: 2px 0 8px; padding-left: 22px; }
+  .sheet li { margin-bottom: 2px; }
+  .redflag-box {
+    border: 1.5px solid var(--danger); border-radius: 6px;
+    box-sizing: border-box; width: calc(100% - 2px);
+    padding: 8px 14px; margin-top: 6px; page-break-inside: avoid;
+  }
+  .redflag-box h3 { border-left-color: var(--danger); color: var(--danger); margin-top: 0; }
+  table.meds {
+    width: calc(100% - 2px); border-collapse: collapse; font-size: 12.5px; margin: 4px 0 8px;
+    border: 1.5px solid #555;
+  }
+  table.meds th, table.meds td { border: 1px solid #999; padding: 4px 6px; text-align: center; }
+  table.meds th { background: #f3f5f7; }
+  .sign-area {
+    margin-top: 26px; display: flex; justify-content: space-between;
+    page-break-inside: avoid;
+  }
+  .disclaimer { font-size: 12px; color: #666; margin-top: 18px; border-top: 1px dashed #aaa; padding-top: 6px; }
+  .empty-tip { color: #aaa; text-align: center; padding: 60px 0; }
+
+  /* 预览可编辑提示与条目删除按钮 */
+  .edit-hint { font-size: 12px; color: #777; margin: 0 0 8px; }
+  .sheet[contenteditable="true"]:focus { outline: 2px dashed #b8d4ec; outline-offset: 2px; }
+  .sheet li { position: relative; }
+  .li-del {
+    display: none; position: absolute; left: -19px; top: 1px;
+    color: var(--danger); font-weight: 700; cursor: pointer;
+    user-select: none; line-height: 1.4;
+  }
+  .sheet li:hover .li-del { display: inline; }
+
+  /* ===== 知情告知记录块 ===== */
+  .consent-block {
+    border: 1px solid #888;
+    border-radius: 4px;
+    padding: 8px 14px;
+    margin: 12px 0;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  /* ===== 打印 ===== */
+  @media print {
+    @page { size: A4; margin: 12mm; }
+    body { background: #fff; }
+    .toolbar, .form-panel, .edit-hint, .li-del { display: none !important; }
+    .layout { display: block; padding: 0; }
+    .sheet {
+      width: auto; min-height: 0; box-shadow: none;
+      padding: 0; margin: 0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>心脏外科患者出院告知单生成系统</h1>
+  <button onclick="render()">生成 / 刷新告知单</button>
+  <button onclick="doPrint()">打印</button>
+  <button onclick="doPdf()">生成 PDF</button>
+  <button class="danger" onclick="clearAll()">清空重填</button>
+</div>
+
+<div class="layout">
+  <!-- ================= 左侧填写区 ================= -->
+  <div class="form-panel" id="formPanel">
+
+    <fieldset>
+      <legend>① 患者基本信息</legend>
+      <div class="grid2">
+        <label class="field">姓名 <input id="ptName"></label>
+        <label class="field">性别
+          <select id="ptSex"><option value=""></option><option>男</option><option>女</option></select>
+        </label>
+        <label class="field">年龄 <input id="ptAge" placeholder="岁"></label>
+        <label class="field">住院号 <input id="ptId"></label>
+        <label class="field">出院日期 <input id="ptDate" type="date"></label>
+        <label class="field">出院诊断
+          <input id="ptDx" placeholder="如：冠心病、风湿性心脏病…">
+        </label>
+        <label class="field">手术名称
+          <input id="ptOp" placeholder="如：冠状动脉旁路移植术">
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>② 内科合并症（按诊断勾选）</legend>
+      <div class="checks" id="diseaseChecks"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>③ 手术类型（可多选）</legend>
+      <div class="checks" id="surgeryChecks"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>④ 出院带药</legend>
+      <p class="hint">可点选常用药品自动填入常见用法（剂量请按实际医嘱核改），也可手动逐项录入；
+      "药物类别"对应的用药注意事项会自动汇总到告知单。</p>
+      <select id="medPick" style="width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:4px;margin-bottom:10px;background:#f4f9fe;">
+        <option value="">— 点选常用药品，自动添加一行并填入用法 —</option>
+      </select>
+      <div class="med-row med-head">
+        <span>药品名称</span><span>规格/剂量</span><span>用法</span><span>疗程</span><span>药物类别</span><span></span>
+      </div>
+      <div id="medRows"></div>
+      <button id="addMed" onclick="addMedRow()">＋ 添加药品</button>
+    </fieldset>
+
+    <fieldset>
+      <legend>⑤ 复诊与随访</legend>
+      <div class="grid2">
+        <label class="field">首次复诊时间 <input id="fuDate" placeholder="出院后 1～2 周"></label>
+        <label class="field">复诊地点 <input id="fuPlace" value="心脏外科二楼门诊"></label>
+        <label class="field">随访电话 <input id="fuTel" value="0916-2680021"></label>
+        <label class="field">主管医师 <input id="fuDoc"></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>⑥ 知情告知记录（留痕，可选）</legend>
+      <p class="hint">勾选后在告知单末尾生成留痕语句，打印后医患双方签字；不勾选则不显示。</p>
+      <div class="checks" style="grid-template-columns: 1fr;" id="consentChecks">
+        <label><input type="checkbox" id="con_inform"> 已向患者/家属详细交代上述出院注意事项及用药方案，患方知情同意</label>
+        <label><input type="checkbox" id="con_prognosis"> 已告知病情、手术情况及预后</label>
+        <label><input type="checkbox" id="con_followup"> 已告知按时随访复查的必要性，患方表示理解</label>
+        <label><input type="checkbox" id="con_risk"> 已告知不规律用药、擅自停药及不按时复查的潜在风险，患方明白</label>
+        <label><input type="checkbox" id="con_refuse"> 患者拒绝某项医嘱，已充分告知风险后果，患方坚持并签字为据</label>
+      </div>
+      <label class="field" style="margin-top:8px">拒绝医嘱备注（选填，配合上条使用）
+        <input id="con_refuse_note" placeholder="如：拒绝抗凝治疗、要求提前出院…">
+      </label>
+    </fieldset>
+  </div>
+
+  <!-- ================= 右侧 A4 预览区 ================= -->
+  <div class="preview-panel">
+    <p class="edit-hint">💡 生成后可直接点击预览文字进行修改；鼠标移到条目上，点其左侧红色 ×
+      可删除该条。重新点击「生成 / 刷新告知单」将按左侧表单重新生成（会提示是否覆盖手动修改）。</p>
+    <div class="sheet" id="sheet">
+      <p class="empty-tip">填写左侧信息后，点击顶部「生成 / 刷新告知单」查看预览</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   知识库（KB）：科室维护人员仅需修改本区即可增删内容
+   ⚠ 以下条目为模板参考，正式启用前须经心脏外科及药剂科审定
+===================================================================== */
+const KB = {
+
+  /* ---------- 一、一般注意事项（以心力衰竭管理为基底，所有患者） ---------- */
+  generalBase: [
+    "限制饮水量：每日总入量一般 1500～2000 ml（含汤、粥、水果、输液），遵医嘱调整；避免一次性大量饮水。",
+    "低盐低脂、易消化饮食：每日食盐 < 5 g，避免腌制食品；少量多餐，勿过饱。",
+    "每日晨起排尿后、早餐前同一条件下称体重并记录：3 天内体重增加超过 2 kg，或出现下肢水肿加重，提示体内液体潴留，及时联系医生调整利尿剂。",
+    "活动量以不诱发明显气促、心悸、疲乏为度，循序渐进，量力而行；出现夜间阵发性呼吸困难、不能平卧、端坐呼吸时立即就诊。",
+    "每日测量并记录体温、脉搏（心率）、血压，复诊时携带记录本。",
+    "严格戒烟（含二手烟），不饮酒。",
+    "按时按量服药（利尿、强心、改善心功能等药物），不可自行停药、减药或换药。",
+    "保持大便通畅，排便勿用力屏气，必要时遵医嘱使用缓泻剂。",
+    "注意保暖，预防感冒；流感季节避免前往人群密集场所，可咨询医生接种流感及肺炎疫苗。",
+    "保证充足睡眠，保持情绪平稳，避免激动、紧张和过度劳累。",
+    "每次就诊（含口腔科、其他专科）时主动告知医生心脏病史、手术史及目前用药。"
+  ],
+
+  /* ---------- 手术/操作相关一般注意事项（选择任一手术后显示） ---------- */
+  generalSurgical: [
+    "伤口护理：保持切口/穿刺点清洁干燥，每日观察有无红肿、渗液、裂开或异常疼痛；术后 2 周内擦浴，伤口完全愈合前勿盆浴、泡澡或游泳。",
+    "正中开胸患者：胸骨保护 6～8 周——咳嗽或打喷嚏时双手抱枕按压胸前；勿单臂支撑起身、勿推拉重物、勿提超过 5 kg 重物；术后 6 周内不驾驶机动车，乘车系安全带可垫小枕保护胸骨。",
+    "介入/穿刺患者：穿刺部位 1～2 周内避免用力下蹲、剧烈活动，观察有无渗血、血肿或搏动性包块，发现异常及时就诊。",
+    "术后 3 个月内避免剧烈运动及竞技性活动；恢复重体力劳动、驾驶及性生活的时间请咨询主管医师。",
+    "按医嘱时间到门诊拆线、复查伤口。"
+  ],
+
+  /* ---------- 紧急就医指征（红色警示框） ---------- */
+  redFlags: [
+    "胸痛、胸闷持续不缓解，或含服硝酸甘油后仍不缓解",
+    "明显呼吸困难、不能平卧、夜间憋醒",
+    "晕厥、黑矇，或心率持续 > 120 次/分或 < 50 次/分、自觉心跳明显不规则",
+    "发热体温 > 38.5 ℃，或伤口红肿、流脓、裂开",
+    "突发剧烈胸背部撕裂样疼痛",
+    "咯血、呕血、黑便、肉眼血尿，或皮肤大片瘀斑等出血表现",
+    "一侧肢体无力、麻木、口角歪斜、言语不清（警惕脑卒中）",
+    "双下肢明显水肿加重，或单侧小腿肿胀疼痛"
+  ],
+
+  /* ---------- 二、内科合并症 ---------- */
+  diseases: {
+    ht: { label: "高血压", items: [
+      "每日早晚各测一次血压并记录，复诊时携带记录；一般控制目标 < 130/80 mmHg，具体以医嘱为准。",
+      "降压药须长期规律服用，血压正常也不可自行停药；如血压持续 > 160/100 mmHg 或出现头晕头痛，及时就诊。",
+      "严格限盐（每日食盐 < 5 g），避免腌制食品。"
+    ]},
+    cad: { label: "冠心病", items: [
+      "坚持冠心病二级预防用药（抗血小板、他汀、β受体阻滞剂等），不可自行停药、减药。",
+      "随身携带硝酸甘油：心绞痛发作时立即停止活动、坐下休息并舌下含服 1 片，5 分钟不缓解可重复（最多 3 片），仍不缓解立即拨打 120。",
+      "控制危险因素：血压、血糖、血脂达标，严格戒烟，控制体重。",
+      "避免心绞痛诱因：饱餐、寒冷刺激、情绪激动、用力排便及突然剧烈活动。",
+      "定期复查血脂、肝功能、心电图，按医嘱门诊随访。"
+    ]},
+    dm: { label: "糖尿病", items: [
+      "规律监测血糖：一般空腹 4.4～7.0 mmol/L、餐后 2 小时 < 10.0 mmol/L，具体目标遵医嘱。",
+      "识别低血糖表现（心慌、出汗、手抖、饥饿感、意识模糊），随身携带糖果或含糖饮料，发作时立即进食并复测血糖。",
+      "糖尿病影响伤口愈合，更需密切观察切口情况；做好足部护理，每日检查双足皮肤。",
+      "饮食定时定量，胰岛素注射者注意轮换注射部位。"
+    ]},
+    af: { label: "心房颤动", items: [
+      "严格按医嘱服用抗凝/抗心律失常药物，不可漏服或自行停药。",
+      "每日自测脉搏，若心室率持续 > 120 次/分或 < 50 次/分，或心悸、头晕明显，及时就诊。",
+      "服抗凝药期间注意观察出血倾向（牙龈出血、瘀斑、黑便、血尿等）。"
+    ]},
+    ie: { label: "感染性心内膜炎", items: [
+      "严格完成全程抗感染治疗（含出院后续用的口服抗生素疗程），症状好转也不可自行停药或减量，疗程不足极易复发。",
+      "每日监测体温：再次出现发热、寒战、乏力、食欲下降，及时就诊并主动告知心内膜炎病史。",
+      "保持口腔卫生：早晚刷牙、定期口腔检查；拔牙、洁牙及任何有创操作前务必告知医生病史，必要时预防性使用抗生素。",
+      "避免皮肤感染源：勿挤压痘疮疖肿，皮肤伤口及时消毒处理。",
+      "按医嘱复查血常规、炎症指标、血培养及心脏超声；出现气促、水肿加重等心功能恶化表现及时就诊。"
+    ]},
+    lipid: { label: "高脂血症", items: [
+      "坚持服用他汀类等调脂药物，即使血脂正常也不可自行停药（兼有稳定斑块作用）。",
+      "如出现不明原因肌肉酸痛、乏力或尿色加深，及时就诊查肌酶。",
+      "出院后 4～6 周复查血脂、肝功能。"
+    ]},
+    ckd: { label: "慢性肾功能不全", items: [
+      "避免使用肾毒性药物（如部分止痛药/退烧药即非甾体抗炎药、部分抗生素），用药前告知医生肾病史。",
+      "注意尿量变化，明显减少（每日 < 400 ml）时及时就诊。",
+      "定期复查血肌酐、电解质；优质低蛋白饮食，遵肾内科医嘱。"
+    ]},
+    copd: { label: "慢阻肺/慢性支气管炎", items: [
+      "严格戒烟；坚持腹式呼吸、缩唇呼吸训练及有效咳嗽排痰。",
+      "规律使用吸入药物，掌握正确吸入方法；有家庭氧疗指征者每日低流量吸氧。",
+      "咳嗽加重、痰量增多变黄或气促加重提示急性加重，及时就诊。"
+    ]},
+    stroke: { label: "脑卒中病史", items: [
+      "坚持服用抗栓及他汀类药物，控制血压、血糖、血脂等危险因素。",
+      "坚持康复训练（肢体、言语），防跌倒：穿防滑鞋、夜间留灯、起身动作放缓。",
+      "再发肢体无力、麻木、言语不清、视物异常等，立即拨打急救电话。"
+    ]}
+  },
+
+  /* ---------- 三、术后专项要求 ---------- */
+  surgeries: {
+    cabg: { label: "冠状动脉旁路移植术（搭桥）", items: [
+      "取大隐静脉侧下肢：白天穿弹力袜 4～6 周，休息时抬高患肢，观察肿胀及伤口情况。",
+      "严格服用抗血小板等冠心病二级预防药物，不可自行停药；建议参加心脏康复运动训练。",
+      "再发心绞痛样胸痛及时舌下含服硝酸甘油并就诊，持续不缓解立即拨打 120。"
+    ]},
+    valveMech: { label: "机械瓣置换", items: [
+      "终身服用华法林抗凝，绝对不可漏服或自行停药。",
+      "定期监测 INR：出院初期每 3～7 天一次，稳定后每 2～4 周一次；INR 控制目标遵医嘱（一般主动脉瓣 1.8～2.5，二尖瓣 2.0～3.0）。",
+      "保持饮食结构稳定，富含维生素 K 的食物（绿叶蔬菜、动物肝脏）不必禁食但摄入量应均衡稳定。",
+      "出现出血表现（牙龈出血不止、黑便、血尿、大片瘀斑）或栓塞表现（肢体无力、言语不清、突发腹痛/肢体剧痛发凉），立即就诊。",
+      "任何拔牙、胃肠镜、手术等有创操作前，务必告知医生正在服用华法林，由医生决定是否桥接抗凝。",
+      "育龄期女性如有妊娠计划，须提前至心脏专科及产科咨询调整抗凝方案。",
+      "注意预防感染性心内膜炎：保持口腔卫生，牙科操作前咨询是否需预防性使用抗生素。"
+    ]},
+    valveBio: { label: "生物瓣置换", items: [
+      "术后一般需抗凝 3～6 个月（华法林或遵医嘱），之后按医嘱调整为抗血小板或停用，切勿自行决定。",
+      "抗凝期间定期监测 INR，注意出血及栓塞表现（同抗凝注意事项）。",
+      "终身注意预防感染性心内膜炎：保持口腔卫生，拔牙等牙科操作前告知医生人工瓣膜史，必要时预防性使用抗生素。",
+      "生物瓣有远期衰败可能，须坚持每年心脏超声随访。"
+    ]},
+    valveRepair: { label: "瓣膜成形/修复术", items: [
+      "按医嘱完成术后抗凝/抗血小板疗程（一般 3 个月左右），不可自行停药。",
+      "术后 3 个月、6 个月、1 年复查心脏超声，之后每年复查，评估瓣膜功能。",
+      "注意预防感染性心内膜炎：口腔卫生、有创操作前告知瓣膜手术史。"
+    ]},
+    aorta: { label: "主动脉夹层/大血管开放手术", items: [
+      "严格控制血压是重中之重：一般目标收缩压 < 120 mmHg、心率 < 70 次/分（遵医嘱），每日早晚测量并记录。",
+      "严禁用力屏气：保持大便通畅，避免提重物，剧烈咳嗽时及时处理，避免情绪剧烈波动。",
+      "按计划复查主动脉 CTA（一般术后 3 个月、6 个月、12 个月，之后每年一次），评估残余夹层及人工血管情况。",
+      "突发剧烈胸痛、背痛、腹痛呈撕裂样，立即拨打急救电话，平卧勿活动。"
+    ]},
+    tevar: { label: "主动脉夹层腔内隔绝术（TEVAR）", items: [
+      "严格控制血压：一般目标收缩压 < 120 mmHg、心率 < 70 次/分（遵医嘱），每日早晚测量并记录，降压药规律服用不可自行停药。",
+      "股动脉穿刺/切口部位：2 周内避免用力下蹲、久蹲及剧烈活动，观察有无渗血、血肿、搏动性包块及下肢发凉麻木。",
+      "避免用力屏气：保持大便通畅，避免提重物及剧烈咳嗽，戒烟。",
+      "按计划复查主动脉 CTA（一般术后 3 个月、6 个月、12 个月，之后每年一次），评估支架位置、有无内漏及远端夹层变化，切勿因无症状而漏检。",
+      "再发剧烈胸背部撕裂样疼痛、晕厥、腹痛或下肢缺血表现，立即拨打急救电话。"
+    ]},
+    chd: { label: "先天性心脏病矫治术（开胸）", items: [
+      "按医嘱完成术后抗凝/抗血小板疗程（如有补片或人工材料，一般 3～6 个月）。",
+      "注意预防感染性心内膜炎：保持口腔卫生，牙科及有创操作前告知心脏手术史。",
+      "术后 1 个月、3 个月、6 个月、1 年复查心脏超声及心电图，之后遵医嘱定期随访。",
+      "儿童患者：按儿科医嘱恢复疫苗接种（一般术后 3 个月，遵医嘱）；活动量按心功能恢复情况逐步放开，避免家长过度限制或放任剧烈运动。"
+    ]},
+    chdOcclusion: { label: "先天性心脏病封堵术", items: [
+      "按医嘱服用阿司匹林等抗血小板药物（一般 6 个月，儿童按体重计算剂量），不可自行停药。",
+      "术后 6 个月内（封堵器内皮化完成前）注意预防感染性心内膜炎：保持口腔卫生，牙科及有创操作前告知封堵器植入史。",
+      "术后 3～6 个月内避免剧烈运动及胸部碰撞、对抗性活动。",
+      "术后 1 个月、3 个月、6 个月、12 个月复查心脏超声及心电图，评估封堵器位置及有无残余分流。",
+      "出现明显心悸、头晕、晕厥（警惕心律失常、传导阻滞）或突发胸闷气促，及时就诊。"
+    ]},
+    tumor: { label: "心脏肿瘤摘除术", items: [
+      "心脏肿瘤（如黏液瘤）有复发可能：术后 3 个月、6 个月、12 个月复查心脏超声，之后每年复查一次，长期坚持。",
+      "按医嘱完成术后抗凝/抗血小板疗程，不可自行停药。",
+      "及时到门诊获取并由医生解读病理结果，按病理性质确定后续随访或治疗方案。",
+      "出现心悸、气促、晕厥，或肢体无力麻木、言语不清、肢体剧痛发凉等栓塞表现，立即就诊。"
+    ]},
+    tavr: { label: "经导管主动脉瓣置换术（TAVR）", items: [
+      "严格按医嘱服用抗血小板/抗凝药物（常为双联抗血小板 3～6 个月后改单药，或遵医嘱），不可自行停药。",
+      "股动脉穿刺部位：2 周内避免用力下蹲及剧烈活动，观察有无渗血、血肿、搏动性包块。",
+      "注意心率：每日自测脉搏，出现心率持续 < 50 次/分、明显头晕、黑矇或晕厥（警惕传导阻滞），立即就诊。",
+      "终身注意预防感染性心内膜炎：保持口腔卫生，牙科及有创操作前告知人工瓣膜植入史，必要时预防性使用抗生素。",
+      "术后 1 个月、3 个月、6 个月、12 个月复查心脏超声及心电图，之后每年随访；随身携带瓣膜植入卡。"
+    ]},
+    pericardio: { label: "心包积液穿刺术（心包穿刺/置管引流）", items: [
+      "穿刺点保持清洁干燥，观察有无红肿、渗液；置管已拔除者敷料 3 天后可去除。",
+      "警惕积液复发/心包填塞：出现胸闷气促加重、心悸、乏力、不能平卧、血压下降、面色苍白出冷汗，立即就诊。",
+      "积极治疗原发病：严格按医嘱完成抗结核、抗肿瘤或抗炎等病因治疗疗程，不可自行中断。",
+      "按医嘱复查心脏超声（一般 1～2 周及 1 个月各一次，之后遵医嘱），评估积液有无再积聚。",
+      "低盐饮食，避免劳累，注意休息。"
+    ]}
+  },
+
+  /* ---------- 四、药物类别注意事项 ---------- */
+  drugClasses: {
+    warfarin: { label: "华法林", items: [
+      "每日固定时间服用，漏服当日想起可补服，次日发现切勿双倍剂量补服，并记录告知医生。",
+      "定期监测 INR 并按医生指示调整剂量；自行加用/停用任何药物（尤其抗生素、胺碘酮、中药）前先咨询医生，多种药物可显著影响华法林效果。",
+      "保持富含维生素 K 食物（绿叶菜等）摄入量稳定；避免大量饮酒。",
+      "出现出血表现（牙龈出血不止、黑便、血尿、瘀斑增多）立即就诊。"
+    ]},
+    noac: { label: "新型口服抗凝药（利伐沙班/达比加群等）", items: [
+      "每日固定时间服用，不可漏服；利伐沙班 15/20 mg 须与食物同服。",
+      "定期复查肾功能，肾功能变化时剂量可能需调整。",
+      "注意出血表现；任何有创操作前告知医生正在服用抗凝药。"
+    ]},
+    antiplatelet: { label: "抗血小板药（阿司匹林/氯吡格雷/替格瑞洛）", items: [
+      "餐后服用以减少胃肠刺激；不可自行停药，过早停药有支架/桥血管血栓风险。",
+      "出现黑便、呕血、皮肤瘀斑增多及时就诊。",
+      "如同时服用两种抗血小板药（双抗），疗程结束须由心内/心外科医生决定何时减为单药。"
+    ]},
+    betaBlocker: { label: "β受体阻滞剂（美托洛尔/比索洛尔）", items: [
+      "服药期间每日自测心率，静息心率持续 < 50 次/分或明显头晕乏力时暂缓服用并咨询医生。",
+      "绝不可突然停药（可诱发心绞痛、心律失常），需停药时应在医生指导下逐渐减量。"
+    ]},
+    acei: { label: "ACEI/ARB/ARNI（普利/沙坦/诺欣妥类）", items: [
+      "服药初期注意体位性低血压，起身宜缓慢。",
+      "如出现持续干咳（ACEI 常见）可告知医生评估换药；出现口唇面部肿胀（血管性水肿）立即停药就诊。",
+      "定期复查血钾及肾功能。"
+    ]},
+    diuretic: { label: "利尿剂（呋塞米/托拉塞米/螺内酯/氢氯噻嗪）", items: [
+      "宜晨起或上午服用，避免夜间排尿影响睡眠。",
+      "定期复查电解质（尤其血钾）；遵医嘱服用补钾药，不可自行增减。",
+      "记录每日尿量和体重，明显乏力、心悸、肌肉痉挛可能提示电解质紊乱，及时就诊。"
+    ]},
+    statin: { label: "他汀类（阿托伐他汀/瑞舒伐他汀）", items: [
+      "可每日固定时间服用（部分他汀建议晚间服）。",
+      "出现不明原因肌肉酸痛、乏力、尿色加深（酱油色）及时就诊查肌酶。",
+      "出院后 4～6 周复查肝功能、血脂；避免与西柚（葡萄柚）大量同食。"
+    ]},
+    amiodarone: { label: "胺碘酮", items: [
+      "严格按医嘱剂量及减量计划服用，勿自行调整。",
+      "定期复查甲状腺功能、肝功能、胸片/肺功能及心电图（一般每 3～6 个月）。",
+      "服药期间皮肤光敏感，外出注意防晒；出现明显视物异常、干咳气促、心率过缓及时就诊。",
+      "与华法林合用会增强抗凝效果，须加强 INR 监测。"
+    ]},
+    digoxin: { label: "地高辛", items: [
+      "每日固定时间服用，服药前自测脉搏，< 60 次/分时暂缓服用并咨询医生。",
+      "出现恶心呕吐、食欲明显下降、视物发黄发绿等中毒征象立即停药就诊。",
+      "定期复查血药浓度、电解质及肾功能；低血钾会增加中毒风险。"
+    ]},
+    nitrate: { label: "硝酸酯类（单硝酸异山梨酯/硝酸甘油）", items: [
+      "服药初期可能出现头痛，多可逐渐耐受；起身宜缓慢，防体位性低血压。",
+      "缓释片应整片吞服，勿嚼碎掰开。",
+      "硝酸甘油为急救药：心绞痛发作时立即坐下舌下含服 1 片，5 分钟不缓解可重复（最多 3 片），仍不缓解立即拨打 120；随身携带，避光密封保存，开瓶后 3～6 个月更换。",
+      "严禁与西地那非类药物（治疗勃起功能障碍药）同用，可致严重低血压。"
+    ]},
+    hypoglycemic: { label: "降糖药/胰岛素", items: [
+      "按时按量用药并与进餐时间配合，防止低血糖；随身携带糖果及糖尿病识别卡。",
+      "胰岛素注意冷藏保存（开封后室温阴凉处 ≤ 28 天），轮换注射部位。",
+      "规律监测血糖并记录，复诊时携带记录。"
+    ]},
+    ppi: { label: "胃黏膜保护/抑酸药（奥美拉唑/泮托拉唑等）", items: [
+      "一般早餐前 30 分钟服用。",
+      "同时服用氯吡格雷者，建议选用泮托拉唑或雷贝拉唑（相互作用小），具体遵医嘱。",
+      "按疗程服用，勿长期自行续用。"
+    ]},
+    potassium: { label: "补钾药（氯化钾缓释片等）", items: [
+      "餐中或餐后服用，整片吞服勿嚼碎，并多饮水，减少胃肠刺激。",
+      "定期复查血钾，根据结果由医生调整剂量。"
+    ]},
+    antibiotic: { label: "抗感染药物（抗生素）", items: [
+      "严格按时按量完成全程疗程，症状好转也不可擅自停药，以防感染复发及细菌耐药。",
+      "服药期间出现皮疹、瘙痒、腹泻、恶心等不适及时联系医生，勿自行换药或停药。",
+      "多数抗生素可显著增强华法林作用：同服华法林者须加强 INR 监测。",
+      "服药期间勿饮酒；按医嘱复查血常规、肝肾功能及炎症指标。"
+    ]},
+    sleep: { label: "改善睡眠药物", items: [
+      "按医嘱短期、间断服用，不可长期连续服用，以免产生依赖；从最低有效剂量开始，遵医嘱逐步减停，切勿突然停药。",
+      "服药后勿驾驶车辆或操作机械，夜间起床时动作放缓防跌倒；如出现日间过度嗜睡、记忆力减退，及时告知医生。",
+      "睡前 30 分钟服用；同时养成规律作息，避免睡前使用手机/电脑及饮用咖啡、浓茶等。"
+    ]},
+    digestive: { label: "促消化药物（多潘立酮/莫沙必利等）", items: [
+      "餐前 15～30 分钟服用效果较好；不宜长期大量使用，按疗程遵医嘱减停。",
+      "出现腹泻、腹痛或皮疹等不适时及时告知医生；勿自行长期续用。"
+    ]},
+    laxative: { label: "通便药物（乳果糖/聚乙二醇等）", items: [
+      "配合充足饮水（遵医嘱限水者按医嘱量）、增加膳食纤维摄入及适量活动，保持大便通畅。",
+      "乳果糖一般 1～2 天起效，聚乙二醇约 1～3 天起效；按推荐剂量服用，出现腹泻时减量并告知医生。",
+      "排便顺畅后可逐步减量至停用，不宜无限期依赖。"
+    ]},
+    expectorant: { label: "祛痰药物（氨溴索/乙酰半胱氨酸等）", items: [
+      "多饮水（遵医嘱限水者按医嘱量）有助于稀释痰液；配合有效咳嗽及深呼吸练习，促进排痰。",
+      "氨溴索餐后口服可减轻胃肠不适；乙酰半胱氨酸泡腾片溶于温水（勿用沸水）后服用。",
+      "若痰液变黄稠、量增多或伴发热，提示感染，及时就诊。"
+    ]},
+    antitussive: { label: "止咳药物（右美沙芬等）", items: [
+      "适用于无痰干咳；有痰时切勿单纯止咳而忽视排痰，痰液积滞可加重感染。",
+      "服药后避免驾驶车辆及操作机械；勿与单胺氧化酶抑制剂类抗抑郁药同用。",
+      "干咳超过 1 周、或咳嗽加重伴发热，及时就诊查明原因，不可自行延长用药。"
+    ]}
+  }
+};
+
+/* =====================================================================
+   常用药品目录（点选自动填入常见用法并关联注意事项；剂量仅为常见参考，
+   须按实际医嘱修改）
+===================================================================== */
+const DRUGS = [
+  { name: "华法林钠片",           dose: "2.5mg",   usage: "每日1次 口服（按INR调整）", course: "遵医嘱", cls: "warfarin" },
+  { name: "利伐沙班片",           dose: "20mg",    usage: "每日1次 与餐同服",          course: "遵医嘱", cls: "noac" },
+  { name: "达比加群酯胶囊",       dose: "110mg",   usage: "每日2次 口服",              course: "遵医嘱", cls: "noac" },
+  { name: "阿司匹林肠溶片",       dose: "100mg",   usage: "每日1次 口服",              course: "长期",   cls: "antiplatelet" },
+  { name: "硫酸氢氯吡格雷片",     dose: "75mg",    usage: "每日1次 口服",              course: "遵医嘱", cls: "antiplatelet" },
+  { name: "替格瑞洛片",           dose: "90mg",    usage: "每日2次 口服",              course: "遵医嘱", cls: "antiplatelet" },
+  { name: "琥珀酸美托洛尔缓释片", dose: "47.5mg",  usage: "每日1次 口服",              course: "长期",   cls: "betaBlocker" },
+  { name: "富马酸比索洛尔片",     dose: "5mg",     usage: "每日1次 口服",              course: "长期",   cls: "betaBlocker" },
+  { name: "培哚普利叔丁胺片",     dose: "4mg",     usage: "每日1次 口服",              course: "长期",   cls: "acei" },
+  { name: "沙库巴曲缬沙坦钠片",   dose: "50mg",    usage: "每日2次 口服",              course: "长期",   cls: "acei" },
+  { name: "呋塞米片",             dose: "20mg",    usage: "每日1次 晨服",              course: "遵医嘱", cls: "diuretic" },
+  { name: "托拉塞米片",           dose: "10mg",    usage: "每日1次 晨服",              course: "遵医嘱", cls: "diuretic" },
+  { name: "螺内酯片",             dose: "20mg",    usage: "每日1次 口服",              course: "遵医嘱", cls: "diuretic" },
+  { name: "阿托伐他汀钙片",       dose: "20mg",    usage: "每晚1次 口服",              course: "长期",   cls: "statin" },
+  { name: "瑞舒伐他汀钙片",       dose: "10mg",    usage: "每晚1次 口服",              course: "长期",   cls: "statin" },
+  { name: "盐酸胺碘酮片",         dose: "200mg",   usage: "按医嘱递减服用",            course: "遵医嘱", cls: "amiodarone" },
+  { name: "地高辛片",             dose: "0.125mg", usage: "每日1次 口服",              course: "遵医嘱", cls: "digoxin" },
+  { name: "单硝酸异山梨酯缓释片", dose: "40mg",    usage: "每日1次 口服",              course: "遵医嘱", cls: "nitrate" },
+  { name: "硝酸甘油片",           dose: "0.5mg",   usage: "心绞痛发作时舌下含服",      course: "备用",   cls: "nitrate" },
+  { name: "盐酸二甲双胍片",       dose: "0.5g",    usage: "每日2～3次 餐中口服",        course: "长期",   cls: "hypoglycemic" },
+  { name: "泮托拉唑钠肠溶片",     dose: "40mg",    usage: "每日1次 早餐前口服",        course: "遵医嘱", cls: "ppi" },
+  { name: "氯化钾缓释片",         dose: "0.5g×2片", usage: "每日2～3次 餐后整片吞服",   course: "遵医嘱", cls: "potassium" },
+  { name: "阿莫西林克拉维酸钾片", dose: "0.457g",  usage: "每日2～3次 餐后口服",        course: "遵医嘱", cls: "antibiotic" },
+  { name: "利奈唑胺片",           dose: "0.6g",    usage: "每日2次 口服",              course: "遵医嘱", cls: "antibiotic" },
+  { name: "艾司唑仑片",           dose: "1mg",     usage: "睡前30分钟口服",             course: "遵医嘱", cls: "sleep" },
+  { name: "右佐匹克隆片",         dose: "3mg",     usage: "睡前即刻口服",               course: "遵医嘱", cls: "sleep" },
+  { name: "多潘立酮片",           dose: "10mg",    usage: "每日3次 餐前15分钟口服",     course: "遵医嘱", cls: "digestive" },
+  { name: "枸橼酸莫沙必利片",     dose: "5mg",     usage: "每日3次 餐前15分钟口服",     course: "遵医嘱", cls: "digestive" },
+  { name: "乳果糖口服溶液",       dose: "15ml",    usage: "每日1～2次 口服",            course: "遵医嘱", cls: "laxative" },
+  { name: "聚乙二醇4000散",       dose: "10g",     usage: "每日1～2次 溶水后口服",      course: "遵医嘱", cls: "laxative" },
+  { name: "盐酸氨溴索片",         dose: "30mg",    usage: "每日3次 餐后口服",           course: "遵医嘱", cls: "expectorant" },
+  { name: "乙酰半胱氨酸泡腾片",   dose: "0.6g",    usage: "每日1次 溶于温水后服",       course: "遵医嘱", cls: "expectorant" },
+  { name: "氢溴酸右美沙芬片",     dose: "15mg",    usage: "每日3次 口服",               course: "遵医嘱", cls: "antitussive" },
+  { name: "复方甘草口服溶液",     dose: "10ml",    usage: "每日3次 口服",               course: "遵医嘱", cls: "antitussive" }
+];
+
+/* =====================================================================
+   页面逻辑
+===================================================================== */
+const $ = id => document.getElementById(id);
+
+function buildChecks(containerId, dict, prefix) {
+  $(containerId).innerHTML = Object.entries(dict).map(([k, v]) =>
+    `<label><input type="checkbox" id="${prefix}_${k}" value="${k}"> ${v.label}</label>`
+  ).join("");
+}
+buildChecks("diseaseChecks", KB.diseases, "dz");
+buildChecks("surgeryChecks", KB.surgeries, "op");
+
+/* 常用药品点选下拉（按药物类别分组） */
+(function buildMedPick() {
+  const groups = {};
+  DRUGS.forEach((d, i) => {
+    const g = KB.drugClasses[d.cls] ? KB.drugClasses[d.cls].label : "其他";
+    (groups[g] ||= []).push(`<option value="${i}">${d.name}（${d.dose}，${d.usage}）</option>`);
+  });
+  $("medPick").innerHTML += Object.entries(groups)
+    .map(([g, opts]) => `<optgroup label="${g}">${opts.join("")}</optgroup>`).join("");
+  $("medPick").addEventListener("change", function () {
+    if (this.value === "") return;
+    const rows = document.querySelectorAll("#medRows .med-row");
+    const last = rows[rows.length - 1];
+    // 末行为空白行时直接填入，否则新增一行
+    if (last && !last.querySelector(".m-name").value.trim()) last.remove();
+    addMedRow(DRUGS[this.value]);
+    this.value = "";
+    saveDraft();
+  });
+})();
+
+function addMedRow(data = {}) {
+  const row = document.createElement("div");
+  row.className = "med-row";
+  const opts = Object.entries(KB.drugClasses)
+    .map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("");
+  row.innerHTML = `
+    <input class="m-name" placeholder="阿司匹林肠溶片" value="${data.name || ""}">
+    <input class="m-dose" placeholder="100mg" value="${data.dose || ""}">
+    <input class="m-usage" placeholder="每日1次 口服" value="${data.usage || ""}">
+    <input class="m-course" placeholder="长期" value="${data.course || ""}">
+    <select class="m-class"><option value="">（不关联）</option>${opts}</select>
+    <button class="del" title="删除" onclick="this.parentNode.remove(); saveDraft()">×</button>`;
+  if (data.cls) row.querySelector(".m-class").value = data.cls;
+  $("medRows").appendChild(row);
+}
+
+function getMeds() {
+  return [...document.querySelectorAll("#medRows .med-row")].map(r => ({
+    name: r.querySelector(".m-name").value.trim(),
+    dose: r.querySelector(".m-dose").value.trim(),
+    usage: r.querySelector(".m-usage").value.trim(),
+    course: r.querySelector(".m-course").value.trim(),
+    cls: r.querySelector(".m-class").value
+  })).filter(m => m.name || m.cls);
+}
+
+const checked = prefix => [...document.querySelectorAll(`[id^="${prefix}_"]:checked`)].map(c => c.value);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ul = items => `<ul>${items.map(i =>
+  `<li>${i}<span class="li-del" contenteditable="false" title="删除此条" onclick="this.parentNode.remove();markEdited()">×</span></li>`
+).join("")}</ul>`;
+
+/* 预览手动编辑状态 */
+let sheetGenerated = false, sheetEdited = false;
+function markEdited() { sheetEdited = true; }
+
+function render() {
+  if (sheetGenerated && sheetEdited &&
+      !confirm("预览内容已手动修改，重新生成将覆盖这些修改，是否继续？")) return;
+  saveDraft();
+  const dz = checked("dz"), op = checked("op"), meds = getMeds();
+  const v = id => esc($(id).value.trim());
+  let n = 0; const sec = t => `<h3>${["一","二","三","四","五","六"][n++]}、${t}</h3>`;
+
+  let html = `
+    <div class="hospital">汉中市中心医院　心脏外科</div>
+    <h2 class="doc-title">出院告知书</h2>
+    <hr class="rule">
+    <table class="pt-info">
+      <tr><td class="k">姓名</td><td>${v("ptName")}</td>
+          <td class="k">性别</td><td>${v("ptSex")}</td>
+          <td class="k">年龄</td><td>${v("ptAge")}</td>
+          <td class="k">住院号</td><td>${v("ptId")}</td></tr>
+      <tr><td class="k">出院诊断</td><td colspan="3">${v("ptDx")}</td>
+          <td class="k">出院日期</td><td colspan="2">${v("ptDate")}</td></tr>
+      <tr><td class="k">手术名称</td><td colspan="7">${v("ptOp")}</td></tr>
+    </table>`;
+
+  html += sec("一般注意事项") + ul(KB.generalBase);
+  if (op.length) {
+    html += `<h4>◆ 手术/操作相关注意事项</h4>` + ul(KB.generalSurgical);
+  }
+
+  if (dz.length) {
+    html += sec("合并疾病注意事项");
+    dz.forEach(k => { html += `<h4>◆ ${KB.diseases[k].label}</h4>` + ul(KB.diseases[k].items); });
+  }
+
+  if (op.length) {
+    html += sec("术后专项要求");
+    op.forEach(k => { html += `<h4>◆ ${KB.surgeries[k].label}</h4>` + ul(KB.surgeries[k].items); });
+  }
+
+  if (meds.length) {
+    html += sec("出院带药及用药注意事项");
+    html += `<table class="meds">
+      <tr><th>药品名称</th><th>规格/剂量</th><th>用法</th><th>疗程</th></tr>
+      ${meds.map(m => `<tr><td>${esc(m.name)}</td><td>${esc(m.dose)}</td><td>${esc(m.usage)}</td><td>${esc(m.course)}</td></tr>`).join("")}
+    </table>`;
+    const clsSet = [...new Set(meds.map(m => m.cls).filter(Boolean))];
+    clsSet.forEach(k => { html += `<h4>◆ ${KB.drugClasses[k].label}</h4>` + ul(KB.drugClasses[k].items); });
+  }
+
+  html += `<div class="redflag-box">${sec("出现以下情况请立即就诊 / 拨打急救电话 120")}${ul(KB.redFlags)}</div>`;
+
+  const fu = [];
+  if ($("fuDate").value.trim()) fu.push(`首次复诊时间：${v("fuDate")}`);
+  if ($("fuPlace").value.trim()) fu.push(`复诊地点：${v("fuPlace")}`);
+  if ($("fuTel").value.trim()) fu.push(`随访咨询电话：${v("fuTel")}`);
+  if (fu.length) html += sec("复诊与随访安排") + ul(fu);
+
+  const CON_LABELS = {
+    inform:    '已向患者及家属详细交代上述出院注意事项、用药方案及复查计划，患方知情同意',
+    prognosis: '已告知病情、手术情况及预后，患方表示理解',
+    followup:  '已告知按时随访复查的必要性，患方知晓',
+    risk:      '已告知不规律用药、擅自停药及不按时复查的潜在风险，患方表示明白',
+    refuse:    `患者拒绝执行部分医嘱${$("con_refuse_note").value.trim() ? '（' + esc($("con_refuse_note").value.trim()) + '）' : ''}，已充分告知拒绝的风险及后果，患方坚持并签字为据`
+  };
+  const conItems = ['inform','prognosis','followup','risk','refuse'].filter(k => $(`con_${k}`).checked);
+  if (conItems.length) {
+    html += `<div class="consent-block"><strong>【知情告知记录】</strong>${conItems.map(k => CON_LABELS[k]).join('；')}。</div>`;
+  }
+
+  html += `
+    <div class="sign-area">
+      <span>主管医师（签名）：${v("fuDoc") ? "　" + v("fuDoc") : "＿＿＿＿＿＿＿＿"}</span>
+      <span>患者/家属（签名）：＿＿＿＿＿＿＿＿</span>
+      <span>日期：＿＿＿＿年＿＿月＿＿日</span>
+    </div>
+    <p class="disclaimer">说明：本告知书为出院健康指导的一般性建议，具体诊疗及用药请以主管医师医嘱为准；
+    病情变化时请及时就诊。患者/家属签名表示已知晓上述内容。</p>`;
+
+  const sheet = $("sheet");
+  sheet.innerHTML = html;
+  sheet.contentEditable = "true";   // 允许在预览上直接修改文字
+  sheetGenerated = true;
+  sheetEdited = false;
+}
+
+/* 已生成过则保留手动修改，直接打印；未生成则先生成 */
+function ensureRendered() { if (!sheetGenerated) render(); }
+function doPrint() { ensureRendered(); window.print(); }
+function doPdf() {
+  ensureRendered();
+  alert("即将打开打印对话框：\n在「目标打印机 / 打印机」中选择「另存为 PDF」即可生成 PDF 文件。");
+  window.print();
+}
+
+/* ---------- 草稿保存 ---------- */
+const DRAFT_KEY = "cardiacDischargeDraft";
+const FIELD_IDS = ["ptName","ptSex","ptAge","ptId","ptDate","ptDx","ptOp","fuDate","fuPlace","fuTel","fuDoc","con_refuse_note"];
+const CON_KEYS = ["inform","prognosis","followup","risk","refuse"];
+
+function saveDraft() {
+  const d = { fields: {}, dz: checked("dz"), op: checked("op"), meds: getMeds(),
+    consent: CON_KEYS.filter(k => $(`con_${k}`).checked) };
+  FIELD_IDS.forEach(id => d.fields[id] = $(id).value);
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+}
+function loadDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY));
+    if (!d) return;
+    FIELD_IDS.forEach(id => { if (d.fields && d.fields[id]) $(id).value = d.fields[id]; });
+    (d.dz || []).forEach(k => { const c = $("dz_" + k); if (c) c.checked = true; });
+    (d.op || []).forEach(k => { const c = $("op_" + k); if (c) c.checked = true; });
+    (d.consent || []).forEach(k => { const c = $(`con_${k}`); if (c) c.checked = true; });
+    (d.meds || []).forEach(m => addMedRow(m));
+  } catch (e) { /* 忽略损坏的草稿 */ }
+}
+function clearAll() {
+  if (!confirm("确定清空所有已填写内容？")) return;
+  localStorage.removeItem(DRAFT_KEY);
+  location.reload();
+}
+
+document.getElementById("formPanel").addEventListener("change", saveDraft);
+document.getElementById("sheet").addEventListener("input", markEdited);
+loadDraft();
+if (!document.querySelector("#medRows .med-row")) addMedRow();
+</script>
+</body>
+</html>
