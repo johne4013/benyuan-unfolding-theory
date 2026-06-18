@@ -30,7 +30,15 @@ theory_application_checker  →  执行  →  auto_feedback_submitter
   memory_metabolism.py       —  文件膨胀/失活/结构完整性扫描
 
 认知操作工具链（新增）：
-  llm_analogizer.py   —  LLM 类比与想象（类相干多方向推演，需 ANTHROPIC_API_KEY）
+  llm_analogizer.py       —  LLM 类比与想象（类相干多方向推演，需 ANTHROPIC_API_KEY）
+  fragment_recombinator.py —  碎片重组（记忆代谢之后的想象力环节，张力驱动 + 锚点筛选，需 ANTHROPIC_API_KEY）
+
+碎片重组在工具链中的位置：
+  memory_metabolism.py（压缩出碎片：memory.md / reflection.md）
+       ↓
+  fragment_recombinator.py（张力配对 → LLM 重组 → 锚点筛选）
+       ↓
+  evolution_candidate_manager.py（产出 ENHANCEMENT 候选，进入既有审批流程）
 
 公共模块：
   paths.py            —  continuity 根目录统一解析（参数 > FAVA_CONTINUITY_ROOT > 仓库根 > ~/.hermes/continuity）
@@ -210,6 +218,30 @@ python3 llm_analogizer.py compare --against-candidates "新观察"
 
 ---
 
+### 12. fragment_recombinator.py ⭐ [2026-06-16]
+
+**功能：** 碎片重组器——记忆代谢之后的想象力环节（需要 `ANTHROPIC_API_KEY`）  
+**输入：** `runtime/memory.md`（人工长期记忆）+ `runtime/reflection.md`（自动反思条目）  
+**输出：** ENHANCEMENT 候选（走既有 `evolution_candidate_manager` 审批流程）
+
+**核心机制（与理论对齐）：**
+- **张力驱动配对**：相关但从未被连接的碎片张力最高（语义重叠居中），完全相同（冗余）或完全无关（噪音）的配对都被过滤；跨来源（memory × reflection）配对额外加权。
+- **LLM 重组**：让模型在张力中合成一个能同时容纳两个碎片的更高结构，而非简单拼接（复用 `llm_analogizer` 的 LLM 客户端）。
+- **锚点筛选（认同连续性检验）**：重组结果必须能锚定到已有理论概念，否则视为幻觉而非想象，丢弃。
+
+> 碎片加载与张力配对纯本地、确定性、无需 API Key；仅 `recombine` 子命令的合成步骤调用 LLM。
+
+```bash
+python3 fragment_recombinator.py scan                       # 加载并统计碎片（无需 LLM）
+python3 fragment_recombinator.py pairs --top 10 --min-tension 0.3  # 看高张力配对（无需 LLM）
+
+export ANTHROPIC_API_KEY=sk-ant-...
+python3 fragment_recombinator.py recombine --top 5          # 预览重组（不写入）
+python3 fragment_recombinator.py recombine --top 5 --apply  # 通过筛选的重组写入候选库
+```
+
+---
+
 ## 快速上手：完整工作流示例
 
 ```bash
@@ -250,9 +282,10 @@ python3 scripts/memory_metabolism.py
 | 健康监控 | 持续 | `hope_tension_collector.py` + `memory_metabolism.py` |
 | 类比识别 | 随时 | `llm_analogizer.py compare`（需 API Key）|
 | 想象推演 | 随时 | `llm_analogizer.py imagine`（类相干多方向，需 API Key）|
+| 碎片重组 | 代谢之后 | `fragment_recombinator.py recombine`（张力驱动 + 锚点筛选，需 API Key）|
 
 ---
 
-**最后更新：** 2026-06-07  
-**测试覆盖：** 59 项（`python3 -m pytest tests/ -v`，全部通过）  
+**最后更新：** 2026-06-16  
+**测试覆盖：** 78 项（`python3 -m pytest tests/ -v`，全部通过）  
 **CI：** GitHub Actions 每次 push/PR 自动触发

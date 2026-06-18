@@ -72,14 +72,16 @@ benyuan-unfolding-theory/
 │   ├── auto_feedback_submitter.py / integrated_feedback_workflow.py
 │   ├── feedback_classifier.py / evolution_candidate_manager.py / candidate_store.py
 │   ├── theory_integration_writer.py / hope_tension_collector.py / ...
+│   ├── llm_analogizer.py          # LLM 类比与想象（需 API Key）
+│   ├── fragment_recombinator.py   # 碎片重组（记忆代谢后的想象力环节，需 API Key）
 │   ├── paths.py                   # continuity 根目录统一解析
 │   ├── rename_agent.py            # 一键替换协同节点 / 运行环境名称
 │   └── README.md                  # 脚本详细使用说明
 ├── pyproject.toml                 # 依赖声明（核心仅需标准库）
-└── tests/                         ← 🧪 自动化测试（pytest，62 项全部通过）
+└── tests/                         ← 🧪 自动化测试（pytest，78 项全部通过）
 ```
 
-运行测试：`python3 -m pytest tests/ -v`（62项，全部通过）
+运行测试：`python3 -m pytest tests/ -v`（78项，全部通过）
 
 ### 分层说明 / Layer Semantics
 
